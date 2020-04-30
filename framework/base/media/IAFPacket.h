@@ -13,6 +13,7 @@
 #include <utils/frame_work_log.h>
 #include <utils/AFMediaType.h>
 #include <cstring>
+#include <codec/Android/EncryptionInfo.h>
 
 extern "C" {
 //#include <libavutil/rational.h>
@@ -67,6 +68,10 @@ public:
     virtual uint8_t *getData() = 0;
 
     virtual int64_t getSize() = 0;
+
+    virtual std::unique_ptr<EncryptionInfo> getEncryptionInfo() {
+        return nullptr;
+    };
 
     virtual void setDiscard(bool discard)
     {

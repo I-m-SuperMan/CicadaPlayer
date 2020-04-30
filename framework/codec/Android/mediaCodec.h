@@ -5,6 +5,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <mutex>
+#include "EncryptionInfo.h"
 
 #define GOT_EOS   111
 
@@ -147,7 +149,7 @@ namespace Cicada{
         virtual int dequeue_out(int64_t timeout) = 0;
 
         virtual int
-        queue_in(int index, const void *p_buf, size_t size, int64_t pts, bool config) = 0;
+        queue_in(int index, const void *p_buf, size_t size, int64_t pts, bool config,  std::unique_ptr<EncryptionInfo> encryptionInfo) = 0;
 
         virtual int get_out(int index, mc_out *out, bool readBuffer = true) = 0;
 

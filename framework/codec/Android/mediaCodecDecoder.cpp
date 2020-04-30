@@ -170,11 +170,13 @@ namespace Cicada {
             uint8_t *data = nullptr;
             int size = 0;
             int64_t pts = 0;
+            std::unique_ptr<EncryptionInfo> encryptionInfo{nullptr};
 
             if (pPacket != nullptr) {
                 data = pPacket->getData();
                 size = static_cast<int>(pPacket->getSize());
                 pts = pPacket->getInfo().pts;
+                encryptionInfo = pPacket->getEncryptionInfo();
 
                 if (pPacket->getDiscard()) {
                     mDiscardPTSSet.insert(pts);
@@ -183,7 +185,7 @@ namespace Cicada {
                 AF_LOGD("queue eos\n");
             }
 
-            ret = mDecoder->queue_in(index, data, static_cast<size_t>(size), pts, false);
+            ret = mDecoder->queue_in(index, data, static_cast<size_t>(size), pts, false, move(encryptionInfo));
 
             if (ret < 0) {
                 AF_LOGE(" mDecoder->queue_in error \n");

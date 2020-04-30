@@ -30,6 +30,8 @@ public:
 
     int64_t getSize() override;
 
+    std::unique_ptr<EncryptionInfo> getEncryptionInfo() override ;
+
     const AVPacket *ToAVPacket();
 
     explicit operator AVPacket *();

@@ -109,6 +109,12 @@ if (ANDROID)
             Android/GetObjectField.h
             Android/Convertor.cpp
             Android/Convertor.h
+            Android/NewIntArray.cpp
+            Android/NewIntArray.h
+            Android/NewByteArray.cpp
+            Android/NewByteArray.h
+            Android/NewLinkedList.cpp
+            Android/NewLinkedList.h
             )
 elseif (IOS)
     set(SOURCE_FILES ${SOURCE_FILES}

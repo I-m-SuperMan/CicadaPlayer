@@ -23,6 +23,14 @@ if (ANDROID)
             Android/mediacodec_jni.cpp
             Android/mediaCodecDecoder.h
             Android/mediaCodecDecoder.cpp
+            Android/EncryptionInfo.cpp
+            Android/EncryptionInfo.h
+            Android/SubsampleEncryptionInfo.cpp
+            Android/SubsampleEncryptionInfo.h
+            Android/MediaCodecWrapper.cpp
+            Android/MediaCodecWrapper.h
+            Android/OutputBufferInfo.cpp
+            Android/OutputBufferInfo.h
             )
 endif ()
 

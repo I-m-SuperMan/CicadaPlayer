@@ -2,6 +2,7 @@
 #define MEDIACODEC_JNI_HH
 
 #include "mediaCodec.h"
+#include "MediaCodecWrapper.h"
 #include <string>
 
 #define BUFFER_FLAG_CODEC_CONFIG  2
@@ -24,6 +25,7 @@ class MediaCodec_JNI : public mediaCodec
 {
 public:
 
+
     int init(const char *mime, int category, jobject surface) override;
 
     int setOutputSurface(jobject surface) override;
@@ -32,7 +34,7 @@ public:
 
     int configure(size_t i_h264_profile, const mc_args &args) override;
 
-    int queue_in(int index, const void *p_buf, size_t size, int64_t pts, bool config) override;
+    int queue_in(int index, const void *p_buf, size_t size, int64_t pts, bool config ,  std::unique_ptr<EncryptionInfo> encryptionInfo) override;
 
     int dequeue_in(int64_t timeout) override;
 
@@ -56,6 +58,9 @@ private:
     jobject mSurface{nullptr};
     jobject buffer_info{nullptr};
     jobjectArray input_buffers{nullptr}, output_buffers{nullptr};
+
+    std::unique_ptr<MediaCodecWrapper> mediaCodec{nullptr};
+
 };
 }
 #endif // MEDIACODEC_JNI_HH

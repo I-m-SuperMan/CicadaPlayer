@@ -7,6 +7,10 @@
 #include "AVAFPacket.h"
 #include "utils/ffmpeg_utils.h"
 
+extern "C" {
+#include <libavutil/encryption_info.h>
+}
+
 using namespace std;
 
 void AVAFPacket::copyInfo()
@@ -16,10 +20,14 @@ void AVAFPacket::copyInfo()
     mInfo.dts = mpkt->dts;
     // TODO: redefine the flags
     mInfo.flags = 0;
-    if (mpkt->flags & AV_PKT_FLAG_KEY)
+
+    if (mpkt->flags & AV_PKT_FLAG_KEY) {
         mInfo.flags |= AF_PKT_FLAG_KEY;
-    if (mpkt->flags & AV_PKT_FLAG_CORRUPT)
+    }
+
+    if (mpkt->flags & AV_PKT_FLAG_CORRUPT) {
         mInfo.flags |= AF_PKT_FLAG_CORRUPT;
+    }
 
     mInfo.streamIndex = mpkt->stream_index;
     mInfo.timePosition = INT64_MIN;
@@ -88,6 +96,49 @@ void AVAFPacket::setDiscard(bool discard)
 AVAFPacket::operator AVPacket *()
 {
     return mpkt;
+}
+
+std::unique_ptr<EncryptionInfo> AVAFPacket::getEncryptionInfo()
+{
+    int encryption_info_size;
+    const uint8_t *new_encryption_info = av_packet_get_side_data(mpkt,
+                                         AV_PKT_DATA_ENCRYPTION_INFO, &encryption_info_size);
+
+    if (encryption_info_size <= 0 || new_encryption_info == nullptr) {
+        return nullptr;
+    }
+
+    AVEncryptionInfo *avEncryptionInfo = av_encryption_info_get_side_data(new_encryption_info, encryption_info_size);
+
+    if (avEncryptionInfo == nullptr) {
+        return nullptr;
+    }
+
+    auto *info = new EncryptionInfo();
+
+    if (avEncryptionInfo->scheme == MKBETAG('c', 'e', 'n', 'c')) {
+        info->scheme = "cenc";
+    } else if (avEncryptionInfo->scheme == MKBETAG('c', 'e', 'n', 's')) {
+        info->scheme = "cens";
+    } else if (avEncryptionInfo->scheme == MKBETAG('c', 'b', 'c', '1')) {
+        info->scheme = "cbc1";
+    } else if (avEncryptionInfo->scheme == MKBETAG('c', 'b', 'c', 's')) {
+        info->scheme = "cbcs";
+    }
+
+    info->setKey(avEncryptionInfo->key_id, avEncryptionInfo->key_id_size);
+    info->setIv(avEncryptionInfo->iv, avEncryptionInfo->iv_size);
+    info->crypt_byte_block = avEncryptionInfo->crypt_byte_block;
+    info->skip_byte_block = avEncryptionInfo->skip_byte_block;
+    info->subsample_count = avEncryptionInfo->subsample_count;
+
+    if (avEncryptionInfo->subsample_count > 0) {
+        info->subsamples = std::unique_ptr<SubsampleEncryptionInfo>(new SubsampleEncryptionInfo());
+        info->subsamples->bytes_of_protected_data = avEncryptionInfo->subsamples->bytes_of_protected_data;
+        info->subsamples->bytes_of_clear_data = avEncryptionInfo->subsamples->bytes_of_clear_data;
+    }
+
+    return std::unique_ptr<EncryptionInfo>(info);
 }
 
 AVAFFrame::AVAFFrame(AVFrame **frame, IAFFrame::FrameType type) : mType(type)
