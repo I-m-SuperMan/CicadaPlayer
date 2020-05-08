@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <cstring>
 #include <mutex>
-#include "EncryptionInfo.h"
+#include "base/media/EncryptionInfo.h"
 
 #define GOT_EOS   111
 

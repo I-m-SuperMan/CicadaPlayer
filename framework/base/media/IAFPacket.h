@@ -13,7 +13,7 @@
 #include <utils/frame_work_log.h>
 #include <utils/AFMediaType.h>
 #include <cstring>
-#include <codec/Android/EncryptionInfo.h>
+#include <base/media/EncryptionInfo.h>
 
 extern "C" {
 //#include <libavutil/rational.h>

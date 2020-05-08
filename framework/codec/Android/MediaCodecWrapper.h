@@ -9,7 +9,7 @@
 #include <jni.h>
 #include <string>
 #include <vector>
-#include "EncryptionInfo.h"
+#include "base/media/EncryptionInfo.h"
 #include "OutputBufferInfo.h"
 
 namespace Cicada {

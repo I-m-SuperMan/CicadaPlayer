@@ -11,6 +11,7 @@
 #include <utils/frame_work_log.h>
 #include "MediaCodecWrapper.h"
 #include "OutputBufferInfo.h"
+#include "MediaCodecCryptoInfo.h"
 
 using namespace Cicada;
 
@@ -72,7 +73,7 @@ void MediaCodecWrapper::init(JNIEnv *pEnv)
                                            "(I)Lcom/cicada/player/media/OutputBufferInfo;");
         gj_MCWrapper_queueSecureInputBuffer = pEnv->GetMethodID(gj_MCWrapper_class,
                                               "queueSecureInputBuffer",
-                                              "(IILLcom/cicada/player/media/CodecEncryptionInfo;JI)I");
+                                              "(IILcom/cicada/player/media/MediaCodecCryptoInfo;JI)I");
     }
 }
 
@@ -221,11 +222,14 @@ int MediaCodecWrapper::queueSecureInputBuffer(int index, int offset,
 {
     JniEnv jniEnv{};
     JNIEnv *pEnv = jniEnv.getEnv();
-    //TODO
-    jobject codecEncryptionInfo = nullptr;
-    return pEnv->CallIntMethod(mCodecWrapper, gj_MCWrapper_queueSecureInputBuffer, (jint) index,
-                               (jint) offset, codecEncryptionInfo, (jlong) presentationUs,
-                               (jint) flags);
+
+    jobject codecEncryptionInfo = MediaCodecCryptoInfo::convert(pEnv , move(encryptionInfo));
+    int ret = pEnv->CallIntMethod(mCodecWrapper, gj_MCWrapper_queueSecureInputBuffer, (jint) index,
+                                   (jint) offset, codecEncryptionInfo, (jlong) presentationUs,
+                                   (jint) flags);
+    pEnv->DeleteLocalRef(codecEncryptionInfo);
+    AF_LOGD("queueSecureInputBuffer() index(%d),presentationUs(%lld),ret = %d", index, presentationUs, ret);
+    return ret;
 }
 
 int MediaCodecWrapper::releaseOutputBuffer(int index, bool render)

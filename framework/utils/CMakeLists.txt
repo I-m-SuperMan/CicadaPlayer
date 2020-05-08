@@ -60,6 +60,10 @@ list(APPEND SOURCE_FILES
         ../base/media/IAFPacket.h
         ../base/media/AVAFPacket.cpp
         ../base/media/AVAFPacket.h
+        ../base/media/EncryptionInfo.cpp
+        ../base/media/EncryptionInfo.h
+        ../base/media/SubsampleEncryptionInfo.cpp
+        ../base/media/SubsampleEncryptionInfo.h
         )
 
 if (APPLE)
