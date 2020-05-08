@@ -27,6 +27,8 @@ if (ANDROID)
             Android/MediaCodecWrapper.h
             Android/MediaCodecCryptoInfo.cpp
             Android/MediaCodecCryptoInfo.h
+            Android/MediaDrmWrapper.cpp
+            Android/MediaDrmWrapper.h
             Android/OutputBufferInfo.cpp
             Android/OutputBufferInfo.h
             )

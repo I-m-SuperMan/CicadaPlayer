@@ -3,6 +3,7 @@
 
 #include "mediaCodec.h"
 #include "MediaCodecWrapper.h"
+#include "MediaDrmWrapper.h"
 #include <string>
 
 #define BUFFER_FLAG_CODEC_CONFIG  2
@@ -60,6 +61,7 @@ private:
     jobjectArray input_buffers{nullptr}, output_buffers{nullptr};
 
     std::unique_ptr<MediaCodecWrapper> mediaCodec{nullptr};
+    std::unique_ptr<MediaDrmWrapper> mediaDrm{nullptr};
 
 };
 }

@@ -15,7 +15,19 @@ namespace Cicada {
     {
         category_codec = category;
         mediaCodec = std::unique_ptr<MediaCodecWrapper>(new MediaCodecWrapper());
-        return mediaCodec->init(mime, category, surface);
+        int ret = mediaCodec->init(mime, category, surface);
+
+        if (ret == 0) {
+            //TODO 修改uuid
+            mediaDrm  = std::unique_ptr<MediaDrmWrapper>(new MediaDrmWrapper("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"));
+            jobject crypto = mediaDrm->getMediaCrypto();
+            mediaCodec->setMediaCrypto(crypto);
+            JniEnv jniEnv;
+            JNIEnv *handle = jniEnv.getEnv();
+            handle->DeleteLocalRef(crypto);
+        }
+
+        return ret;
     }
 
     int MediaCodec_JNI::start()

@@ -28,6 +28,8 @@ namespace Cicada {
 
         int init(std::string mimeType, int category, void *surface);
 
+        void setMediaCrypto(jobject crypto);
+
         void setCodecSpecificData(std::vector<char *> buffers, std::vector<int> size);
 
         int configureVideo(int h264Profile, int width, int height, int angle);

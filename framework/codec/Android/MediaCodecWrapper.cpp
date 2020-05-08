@@ -20,6 +20,7 @@ static const char *MCWrapperPath = "com/cicada/player/media/MediaCodecWrapper";
 static jclass gj_MCWrapper_class = nullptr;
 static jmethodID gj_MCWrapper_construct = nullptr;
 static jmethodID gj_MCWrapper_init = nullptr;
+static jmethodID gj_MCWrapper_setMediaCrypto = nullptr;
 static jmethodID gj_MCWrapper_setCodecSpecificData = nullptr;
 static jmethodID gj_MCWrapper_configureVideo = nullptr;
 static jmethodID gj_MCWrapper_configureAudio = nullptr;
@@ -44,6 +45,8 @@ void MediaCodecWrapper::init(JNIEnv *pEnv)
         gj_MCWrapper_construct = pEnv->GetMethodID(gj_MCWrapper_class, "<init>", "()V");
         gj_MCWrapper_init = pEnv->GetMethodID(gj_MCWrapper_class, "init",
                                               "(Ljava/lang/String;ILandroid/view/Surface;)I");
+        gj_MCWrapper_setMediaCrypto = pEnv->GetMethodID(gj_MCWrapper_class, "setMediaCrypto",
+                                      "(Landroid/media/MediaCrypto;)V");
         gj_MCWrapper_setCodecSpecificData = pEnv->GetMethodID(gj_MCWrapper_class,
                                             "setCodecSpecificData",
                                             "(Ljava/util/List;)V");
@@ -222,11 +225,10 @@ int MediaCodecWrapper::queueSecureInputBuffer(int index, int offset,
 {
     JniEnv jniEnv{};
     JNIEnv *pEnv = jniEnv.getEnv();
-
-    jobject codecEncryptionInfo = MediaCodecCryptoInfo::convert(pEnv , move(encryptionInfo));
+    jobject codecEncryptionInfo = MediaCodecCryptoInfo::convert(pEnv, move(encryptionInfo));
     int ret = pEnv->CallIntMethod(mCodecWrapper, gj_MCWrapper_queueSecureInputBuffer, (jint) index,
-                                   (jint) offset, codecEncryptionInfo, (jlong) presentationUs,
-                                   (jint) flags);
+                                  (jint) offset, codecEncryptionInfo, (jlong) presentationUs,
+                                  (jint) flags);
     pEnv->DeleteLocalRef(codecEncryptionInfo);
     AF_LOGD("queueSecureInputBuffer() index(%d),presentationUs(%lld),ret = %d", index, presentationUs, ret);
     return ret;
@@ -276,4 +278,11 @@ int MediaCodecWrapper::getOutputBufferInfo(int index, OutputBufferInfo *info)
 
     AF_LOGD("getOutputBufferInfo() index(%d), ret = %d", index, ret);
     return ret;
+}
+
+void MediaCodecWrapper::setMediaCrypto(jobject crypto)
+{
+    JniEnv jniEnv{};
+    JNIEnv *pEnv = jniEnv.getEnv();
+    pEnv->CallVoidMethod(mCodecWrapper, gj_MCWrapper_setMediaCrypto, crypto);
 }
