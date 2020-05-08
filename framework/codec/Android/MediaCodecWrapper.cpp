@@ -140,7 +140,7 @@ int MediaCodecWrapper::configureVideo(int h264Profile, int width, int height, in
     JNIEnv *pEnv = jniEnv.getEnv();
     int ret = pEnv->CallIntMethod(mCodecWrapper, gj_MCWrapper_configureVideo, h264Profile, width,
                                   height, angle);
-    AF_LOGD("configureVideo() h264Profile(%d),width(%d),height(%p),angle(%d) , ret = %d",
+    AF_LOGD("configureVideo() h264Profile(%d),width(%d),height(%d),angle(%d) , ret = %d",
             h264Profile, width, height, angle, ret);
     return ret;
 }
@@ -267,6 +267,7 @@ int MediaCodecWrapper::getOutputBufferInfo(int index, OutputBufferInfo *info)
 
     if (jInfo != nullptr) {
         ret = OutputBufferInfo::convertTo(jInfo, info);
+        pEnv->DeleteLocalRef(jInfo);
     }
 
     AF_LOGD("getOutputBufferInfo() index(%d), ret = %d", index, ret);
