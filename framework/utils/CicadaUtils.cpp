@@ -22,9 +22,10 @@ bool CicadaUtils::isEqual(double a, double b)
 
 bool CicadaUtils::startWith(const std::string &src, const std::initializer_list<std::string> &val)
 {
-    for (const std::string& item : val) {
-        if (src.substr(0, item.length()) == item)
+    for (const std::string &item : val) {
+        if (src.substr(0, item.length()) == item) {
             return true;
+        }
     }
 
     return false;
@@ -33,13 +34,16 @@ bool CicadaUtils::startWith(const std::string &src, const std::initializer_list<
 vector<string> CicadaUtils::split(const string &str, const char delim)
 {
     vector<string> res{};
-    if (str.empty())
+
+    if (str.empty()) {
         return res;
+    }
 
     const char *c_str = str.c_str();
     size_t startPos = 0;
     size_t endPos = 0;
     size_t len = str.length();
+
     while (endPos < len) {
         if (c_str[endPos] != delim) {
             endPos++;
@@ -59,7 +63,6 @@ vector<string> CicadaUtils::split(const string &str, const char delim)
 
 string CicadaUtils::base64enc(const string &str)
 {
-
     int out_size = AV_BASE64_SIZE(str.size() + 1);
     string enc;
     char *out = (char *) malloc(out_size);
@@ -68,6 +71,7 @@ string CicadaUtils::base64enc(const string &str)
     if (ret != nullptr) {
         enc = out;
     }
+
     free(out);
     return enc;
 }
@@ -82,8 +86,24 @@ string CicadaUtils::base64dec(const string &str)
     if (ret > 0) {
         dec = (char *) out;
     }
+
     free(out);
     return dec;
+}
+
+uint64_t CicadaUtils::base64dec(const std::string &str, char **dst)
+{
+    uint64_t out_size = AV_BASE64_DECODE_SIZE(str.size());
+    uint8_t *out = (uint8_t *) malloc(out_size);
+    int ret = av_base64_decode(out, str.c_str(), out_size);
+
+    if (ret > 0) {
+        *dst = reinterpret_cast<char *>(out);
+        return out_size;
+    } else {
+        free(out);
+        return 0;
+    }
 }
 
 

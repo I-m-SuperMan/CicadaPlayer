@@ -69,8 +69,8 @@ jobject MediaDrmWrapper::getMediaCrypto()
     return crypto;
 }
 
-void MediaDrmWrapper::setKeyRequestInfo(std::string &licenceUrl, char *initData, int len,
-                                        std::string &mimeType, int keyType,
+void MediaDrmWrapper::setKeyRequestInfo(std::string licenceUrl, char *initData, int len,
+                                        std::string mimeType, int keyType,
                                         std::map<std::string, std::string> &params)
 {
     JniEnv jniEnv{};

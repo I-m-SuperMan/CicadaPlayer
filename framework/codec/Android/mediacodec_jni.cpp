@@ -7,6 +7,7 @@
 #include <utils/Android/systemUtils.h>
 #include <utils/Android/JniEnv.h>
 #include <utils/Android/JniException.h>
+#include <utils/CicadaUtils.h>
 
 using namespace std;
 namespace Cicada {
@@ -20,6 +21,19 @@ namespace Cicada {
         if (ret == 0) {
             //TODO 修改uuid
             mediaDrm  = std::unique_ptr<MediaDrmWrapper>(new MediaDrmWrapper("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"));
+            std::map<std::string, std::string> param{};
+            char *dst = nullptr;
+            uint64_t len  = CicadaUtils::base64dec("AAAARHBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAACQIARIBNRoNd2lkZXZpbmVfdGVzdCIKMjAxNV90ZWFycyoCU0Q=",
+                                                   &dst);
+            mediaDrm->setKeyRequestInfo("https://proxy.uat.widevine.com/proxy?provider=widevine_test",
+                                        dst, len, "video/mp4",
+                                        1 /*MediaDrm.KEY_TYPE_STREAMING*/,
+                                        param);
+
+            if (dst != nullptr) {
+                free(dst);
+            }
+
             jobject crypto = mediaDrm->getMediaCrypto();
             mediaCodec->setMediaCrypto(crypto);
             JniEnv jniEnv;

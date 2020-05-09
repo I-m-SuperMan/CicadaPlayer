@@ -24,8 +24,8 @@ public:
 
     jobject getMediaCrypto();
 
-    void setKeyRequestInfo(std::string &licenceUrl, char *initData, int len,
-                           std::string &mimeType, int keyType,
+    void setKeyRequestInfo(std::string licenceUrl, char *initData, int len,
+                           std::string mimeType, int keyType,
                            std::map<std::string, std::string> &params);
 
 private:
