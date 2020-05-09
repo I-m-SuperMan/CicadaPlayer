@@ -25,7 +25,7 @@ public:
 
     static std::string base64dec(const std::string &str);
 
-    static uint64_t base64dec(const std::string &str , char** out);
+    static int base64dec(const std::string &str , char** out);
 
 };
 

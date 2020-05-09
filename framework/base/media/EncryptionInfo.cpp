@@ -24,7 +24,6 @@ void EncryptionInfo::setKey(const uint8_t *key, uint32_t key_size)
         key_id_size = key_size;
         key_id = static_cast<uint8_t *>(malloc(key_size));
         memcpy(key_id, key, key_size);
-        _hex_dump(key_id, key_id_size);
     }
 }
 
@@ -36,6 +35,5 @@ void EncryptionInfo::setIv(const uint8_t *_iv, uint32_t _iv_size)
         iv_size = _iv_size;
         iv = static_cast<uint8_t *>(malloc(_iv_size));
         memcpy(iv, _iv, _iv_size);
-        _hex_dump(iv, iv_size);
     }
 }

@@ -91,7 +91,7 @@ string CicadaUtils::base64dec(const string &str)
     return dec;
 }
 
-uint64_t CicadaUtils::base64dec(const std::string &str, char **dst)
+int CicadaUtils::base64dec(const std::string &str, char **dst)
 {
     uint64_t out_size = AV_BASE64_DECODE_SIZE(str.size());
     uint8_t *out = (uint8_t *) malloc(out_size);
@@ -99,7 +99,7 @@ uint64_t CicadaUtils::base64dec(const std::string &str, char **dst)
 
     if (ret > 0) {
         *dst = reinterpret_cast<char *>(out);
-        return out_size;
+        return ret;
     } else {
         free(out);
         return 0;
