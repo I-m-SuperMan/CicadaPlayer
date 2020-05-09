@@ -135,7 +135,7 @@ std::unique_ptr<EncryptionInfo> AVAFPacket::getEncryptionInfo()
     if (avEncryptionInfo->subsample_count > 0) {
         info->subsamples = std::unique_ptr<SubsampleEncryptionInfo>(new SubsampleEncryptionInfo());
         info->subsamples->bytes_of_protected_data = avEncryptionInfo->subsamples->bytes_of_protected_data;
-        info->subsamples->bytes_of_clear_data = avEncryptionInfo->subsamples->bytes_of_clear_data;
+        info->subsamples->bytes_of_clear_data = static_cast<unsigned int>(getSize() - avEncryptionInfo->subsamples->bytes_of_protected_data);
     }
 
     return std::unique_ptr<EncryptionInfo>(info);

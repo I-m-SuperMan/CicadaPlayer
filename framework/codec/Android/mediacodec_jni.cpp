@@ -120,7 +120,7 @@ namespace Cicada {
         }
 
         if (encryptionInfo != nullptr) {
-            return mediaCodec->queueSecureInputBuffer(index, j_mc_size, move(encryptionInfo), pts,
+            return mediaCodec->queueSecureInputBuffer(index, 0, move(encryptionInfo), pts,
                     flags);
         } else {
             return mediaCodec->queueInputBuffer(index, 0, j_mc_size, pts, flags);
