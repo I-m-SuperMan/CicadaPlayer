@@ -8,6 +8,7 @@
 #include <utils/Android/JniEnv.h>
 #include <utils/Android/JniException.h>
 #include <utils/CicadaUtils.h>
+#include <utils/af_string.h>
 
 using namespace std;
 namespace Cicada {
@@ -23,8 +24,12 @@ namespace Cicada {
             mediaDrm  = std::unique_ptr<MediaDrmWrapper>(new MediaDrmWrapper("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"));
             std::map<std::string, std::string> param{};
             char *dst = nullptr;
-            int len  = CicadaUtils::base64dec("AAAARHBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAACQIARIBNRoNd2lkZXZpbmVfdGVzdCIKMjAxNV90ZWFycyoCU0Q=",
-                                              &dst);
+//            int len  = CicadaUtils::base64dec("AAAAR3Bzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAACcIARIBMBoNd2lkZXZpbmVfdGVzdCIKMjAxNV90ZWFycyoFQVVESU8=",&dst);
+//            mediaDrm->setKeyRequestInfo("https://proxy.uat.widevine.com/proxy?provider=widevine_test",
+//                                        dst, len, "audio/mp4",
+//                                        1 /*MediaDrm.KEY_TYPE_STREAMING*/,
+//                                        param);
+            int len  = CicadaUtils::base64dec("AAAARHBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAACQIARIBNRoNd2lkZXZpbmVfdGVzdCIKMjAxNV90ZWFycyoCU0Q=", &dst);
             mediaDrm->setKeyRequestInfo("https://proxy.uat.widevine.com/proxy?provider=widevine_test",
                                         dst, len, "video/mp4",
                                         1 /*MediaDrm.KEY_TYPE_STREAMING*/,
@@ -107,6 +112,10 @@ namespace Cicada {
 
         if (p_buf != nullptr) {
             memcpy(p_mc_buf, p_buf, j_mc_size);
+        }
+
+        if (category_codec == CATEGORY_AUDIO) {
+            AF_LOGW("%s", AfString::HexDump((char *)p_buf, 64).c_str());
         }
 
         int flags = 0;
@@ -220,26 +229,6 @@ namespace Cicada {
 
     int MediaCodec_JNI::configure(size_t i_h264_profile, const mc_args &args)
     {
-//        {
-//            NewStringUTF key(handle, "csd-0");
-//            handle->CallVoidMethod((jobject) jformat, jfields.set_bytebuffer, key.getString(),
-//                                   JavaWVDrm::getPPS());
-//        }
-//
-//        {
-//            NewStringUTF key(handle, "csd-1");
-//            handle->CallVoidMethod((jobject) jformat, jfields.set_bytebuffer, key.getString(),
-//                                   JavaWVDrm::getSPS());
-//        }
-//
-//        wvDrm = JavaWVDrm::create(handle);
-//        JavaWVDrm::init(handle, wvDrm,
-//                        "AAAARHBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAACQIARIBNRoNd2lkZXZpbmVfdGVzdCIKMjAxNV90ZWFycyoCU0Q=",
-//                        "https://proxy.uat.widevine.com/proxy?provider=widevine_test");
-//        wvCrypto = JavaWVDrm::getMediaCrypto(handle, wvDrm);
-
-        //TODO  1.设置csd
-        // 2.设置MeidaCrypto
         if (category_codec == CATEGORY_AUDIO) {
             return mediaCodec->configureAudio(args.audio.sample_rate, args.audio.channel_count);
         } else if (category_codec == CATEGORY_VIDEO) {

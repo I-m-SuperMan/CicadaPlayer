@@ -56,6 +56,8 @@ public:
     static inline bool endWith(const std::string &str, const std::string &tail) {
         return str.compare(str.size() - tail.size(), tail.size(), tail) == 0;
     }
+
+    static std::string HexDump(const char *msg, int length);
 };
 
 #endif //SOURCE_AF_STRING_H

@@ -61,6 +61,7 @@ namespace Cicada{
 
     private:
         IAFFrame::videoInfo mVideoInfo{};
+        IAFFrame::audioInfo mAudioInfo{};
         mediaCodec *mDecoder{nullptr};
 
         std::recursive_mutex mFuncEntryMutex;
@@ -78,6 +79,8 @@ namespace Cicada{
         volatile int mFlushState{0};
 
         std::set<int64_t> mDiscardPTSSet;
+
+        int mCategory{CATEGORY_VIDEO};
     };
 }
 

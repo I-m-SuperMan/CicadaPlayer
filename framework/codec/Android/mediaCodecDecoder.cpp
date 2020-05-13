@@ -28,7 +28,8 @@ namespace Cicada {
 
     bool mediaCodecDecoder::checkSupport(AFCodecID codec, uint64_t flags, int maxSize)
     {
-        if (codec != AF_CODEC_ID_H264 && codec != AF_CODEC_ID_HEVC) {
+        if (codec != AF_CODEC_ID_H264 && codec != AF_CODEC_ID_HEVC
+                && codec != AF_CODEC_ID_AAC) {
             return false;
         }
 
@@ -65,16 +66,20 @@ namespace Cicada {
 
         if (meta->codec == AF_CODEC_ID_H264) {
             mime = "video/avc";
+            mCategory = CATEGORY_VIDEO;
         } else if (meta->codec == AF_CODEC_ID_HEVC) {
             mime = "video/hevc";
+            mCategory = CATEGORY_VIDEO;
+        } else if (meta->codec == AF_CODEC_ID_AAC) {
+            mime = "audio/mp4a-latm";
+            mCategory = CATEGORY_AUDIO;
         } else {
             AF_LOGE("codec is %d, not support", meta->codec);
             return -ENOSPC;
         }
 
         lock_guard<recursive_mutex> func_entry_lock(mFuncEntryMutex);
-        int ret;
-        ret = mDecoder->init(mime, CATEGORY_VIDEO, static_cast<jobject>(voutObsr));
+        int ret = mDecoder->init(mime, mCategory, static_cast<jobject>(voutObsr));
 
         if (ret == MC_ERROR || ret < 0) {
             AF_LOGE("failed to init mDecoder, ret %d", ret);
@@ -83,9 +88,16 @@ namespace Cicada {
         }
 
         mc_args args{};
-        args.video.width = meta->width;
-        args.video.height = meta->height;
-        args.video.angle = 0;
+
+        if (mCategory == CATEGORY_AUDIO) {
+            args.audio.channel_count = meta->channels;
+            args.audio.sample_rate = meta->samplerate;
+        } else {
+            args.video.width = meta->width;
+            args.video.height = meta->height;
+            args.video.angle = 0;
+        }
+
         ret = mDecoder->configure(0, args);
 
         if (ret >= 0) {
@@ -227,24 +239,38 @@ namespace Cicada {
         } else if (index == MC_INFO_TRYAGAIN || index == MC_INFO_OUTPUT_BUFFERS_CHANGED) {
             return -EAGAIN;
         } else if (index == MC_INFO_OUTPUT_FORMAT_CHANGED) {
-            mc_out out{};
-            mDecoder->get_out(index, &out, false);
-            mVideoInfo.height = out.conf.video.height;
+            if (mCategory == CATEGORY_VIDEO) {
+                mc_out out{};
+                mDecoder->get_out(index, &out, false);
+                mVideoInfo.height = out.conf.video.height;
 
-            if (out.conf.video.crop_bottom != MC_ERROR && out.conf.video.crop_top != MC_ERROR) {
-                mVideoInfo.height = out.conf.video.crop_bottom + 1 - out.conf.video.crop_top;
-            }
+                if (out.conf.video.crop_bottom != MC_ERROR && out.conf.video.crop_top != MC_ERROR) {
+                    mVideoInfo.height = out.conf.video.crop_bottom + 1 - out.conf.video.crop_top;
+                }
 
-            mVideoInfo.width = out.conf.video.width;
+                mVideoInfo.width = out.conf.video.width;
 
-            if (out.conf.video.crop_right != MC_ERROR && out.conf.video.crop_left != MC_ERROR) {
-                mVideoInfo.width = out.conf.video.crop_right + 1 - out.conf.video.crop_left;
+                if (out.conf.video.crop_right != MC_ERROR && out.conf.video.crop_left != MC_ERROR) {
+                    mVideoInfo.width = out.conf.video.crop_right + 1 - out.conf.video.crop_left;
+                }
+            } else if (mCategory == CATEGORY_AUDIO) {
+                mc_out out{};
+                mDecoder->get_out(index, &out, false);
+                mAudioInfo.sample_rate = out.conf.audio.sample_rate;
+                mAudioInfo.channels = out.conf.audio.channel_count;
             }
 
             return -EAGAIN;
         } else if (index >= 0) {
             mc_out out{};
-            ret = mDecoder->get_out(index, &out, false);
+
+            if (mCategory == CATEGORY_VIDEO) {
+                ret = mDecoder->get_out(index, &out, false);
+            } else {
+                //audio get the buffer ptr and size
+                ret = mDecoder->get_out(index, &out, true);
+            }
+
             auto item = mDiscardPTSSet.find(out.buf.pts);
 
             if (item != mDiscardPTSSet.end()) {
@@ -253,12 +279,23 @@ namespace Cicada {
                 return -EAGAIN;
             }
 
-            pFrame = unique_ptr<AFMediaCodecFrame>(new AFMediaCodecFrame(IAFFrame::FrameTypeVideo, index,
-            [this](int index, bool render) {
-                mDecoder->release_out(index, render);
-            }));
             // AF_LOGD("mediacodec out pts %" PRId64, out.buf.pts);
-            pFrame->getInfo().video = mVideoInfo;
+            if (mCategory == CATEGORY_VIDEO) {
+                pFrame = unique_ptr<AFMediaCodecFrame>(new AFMediaCodecFrame(IAFFrame::FrameTypeVideo, index,
+                [this](int index, bool render) {
+                    mDecoder->release_out(index, render);
+                }));
+                pFrame->getInfo().video = mVideoInfo;
+            } else {
+                pFrame = unique_ptr<AFMediaCodecFrame>(new AFMediaCodecFrame(IAFFrame::FrameTypeVideo, index,
+                                                       out.buf.p_ptr,
+                                                       out.buf.size,
+                [this](int index, bool render) {
+                    mDecoder->release_out(index, render);
+                }));
+                pFrame->getInfo().audio = mAudioInfo;
+            }
+
             pFrame->getInfo().pts = out.buf.pts != -1 ? out.buf.pts : INT64_MIN;
 
             if (out.b_eos) {

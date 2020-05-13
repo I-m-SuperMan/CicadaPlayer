@@ -109,13 +109,14 @@ MediaCodecWrapper::~MediaCodecWrapper()
 
 int MediaCodecWrapper::init(std::string mimeType, int category, void *surface)
 {
+    mCodecType = (category == 1) ? "AUDIO" : "VIDEO";
     JniEnv jniEnv{};
     JNIEnv *pEnv = jniEnv.getEnv();
     NewStringUTF mime(pEnv, mimeType.c_str());
     int ret = pEnv->CallIntMethod(mCodecWrapper, gj_MCWrapper_init, mime.getString(),
                                   (jint) category,
                                   (jobject) surface);
-    AF_LOGD("init() mimeTyp(%s),category(%d),surface(%p) , ret = %d", mimeType.c_str(), category,
+    AF_LOGD("%s init() mimeTyp(%s),category(%d),surface(%p) , ret = %d", mCodecType.c_str(), mimeType.c_str(), category,
             surface, ret);
     return ret;
 }
@@ -144,8 +145,8 @@ int MediaCodecWrapper::configureVideo(int h264Profile, int width, int height, in
     JNIEnv *pEnv = jniEnv.getEnv();
     int ret = pEnv->CallIntMethod(mCodecWrapper, gj_MCWrapper_configureVideo, h264Profile, width,
                                   height, angle);
-    AF_LOGD("configureVideo() h264Profile(%d),width(%d),height(%d),angle(%d) , ret = %d",
-            h264Profile, width, height, angle, ret);
+    AF_LOGD("%s configureVideo() h264Profile(%d),width(%d),height(%d),angle(%d) , ret = %d",
+            mCodecType.c_str(), h264Profile, width, height, angle, ret);
     return ret;
 }
 
@@ -155,7 +156,7 @@ int MediaCodecWrapper::configureAudio(int sampleRate, int channelCount)
     JNIEnv *pEnv = jniEnv.getEnv();
     int ret = pEnv->CallIntMethod(mCodecWrapper, gj_MCWrapper_configureAudio, sampleRate,
                                   channelCount);
-    AF_LOGD("configureAudio() sampleRate(%d),channelCount(%d) , ret = %d", sampleRate, channelCount,
+    AF_LOGD("%s configureAudio() sampleRate(%d),channelCount(%d) , ret = %d", mCodecType.c_str(), sampleRate, channelCount,
             ret);
     return ret;
 }
@@ -165,7 +166,7 @@ int MediaCodecWrapper::start()
     JniEnv jniEnv{};
     JNIEnv *pEnv = jniEnv.getEnv();
     int ret = pEnv->CallIntMethod(mCodecWrapper, gj_MCWrapper_start);
-    AF_LOGD("start() ,ret = %d", ret);
+    AF_LOGD("%s start() ,ret = %d", mCodecType.c_str(), ret);
     return ret;
 }
 
@@ -174,7 +175,7 @@ int MediaCodecWrapper::stop()
     JniEnv jniEnv{};
     JNIEnv *pEnv = jniEnv.getEnv();
     int ret = pEnv->CallIntMethod(mCodecWrapper, gj_MCWrapper_stop);
-    AF_LOGD("stop() ,ret = %d", ret);
+    AF_LOGD("%s stop() ,ret = %d", mCodecType.c_str(), ret);
     return ret;
 }
 
@@ -183,7 +184,7 @@ int MediaCodecWrapper::flush()
     JniEnv jniEnv{};
     JNIEnv *pEnv = jniEnv.getEnv();
     int ret = pEnv->CallIntMethod(mCodecWrapper, gj_MCWrapper_flush);
-    AF_LOGD("flush() ,ret = %d", ret);
+    AF_LOGD("%s flush() ,ret = %d", mCodecType.c_str(), ret);
     return ret;
 }
 
@@ -193,7 +194,7 @@ int MediaCodecWrapper::dequeueInputBuffer(int64_t timeoutUs)
     JNIEnv *pEnv = jniEnv.getEnv();
     int ret = pEnv->CallIntMethod(mCodecWrapper, gj_MCWrapper_dequeueInputBuffer,
                                   (jlong) timeoutUs);
-    AF_LOGD("dequeueInputBuffer() timeoutUs(%lld) ,ret = %d", timeoutUs, ret);
+    AF_LOGD("%s dequeueInputBuffer() timeoutUs(%lld) ,ret = %d", mCodecType.c_str(), timeoutUs, ret);
     return ret;
 }
 
@@ -203,7 +204,7 @@ int MediaCodecWrapper::dequeueOutputBuffer(int64_t timeoutUs)
     JNIEnv *pEnv = jniEnv.getEnv();
     int ret = pEnv->CallIntMethod(mCodecWrapper, gj_MCWrapper_dequeueOutputBuffer,
                                   (jlong) timeoutUs);
-    AF_LOGD("dequeueOutputBuffer() timeoutUs(%lld) ,ret = %d", timeoutUs, ret);
+    AF_LOGD("%s dequeueOutputBuffer() timeoutUs(%lld) ,ret = %d", mCodecType.c_str(), timeoutUs, ret);
     return ret;
 }
 
@@ -214,8 +215,8 @@ int MediaCodecWrapper::queueInputBuffer(int index, int offset, int size, int64_t
     JNIEnv *pEnv = jniEnv.getEnv();
     int ret = pEnv->CallIntMethod(mCodecWrapper, gj_MCWrapper_queueInputBuffer, (jint) index,
                                   (jint) offset, (jint) size, (jlong) presentationUs, (jint) flags);
-    AF_LOGD("queueInputBuffer() index(%d),offset(%d),size(%d),presentationUs(%lld),flags(%d) ,ret = %d",
-            index, offset, size, presentationUs, flags, ret);
+    AF_LOGD("%s queueInputBuffer() index(%d),offset(%d),size(%d),presentationUs(%lld),flags(%d) ,ret = %d",
+            mCodecType.c_str(), index, offset, size, presentationUs, flags, ret);
     return ret;
 }
 
@@ -230,7 +231,7 @@ int MediaCodecWrapper::queueSecureInputBuffer(int index, int offset,
                                   (jint) offset, codecEncryptionInfo, (jlong) presentationUs,
                                   (jint) flags);
     pEnv->DeleteLocalRef(codecEncryptionInfo);
-    AF_LOGD("queueSecureInputBuffer() index(%d),presentationUs(%lld),ret = %d", index, presentationUs, ret);
+    AF_LOGD("%s queueSecureInputBuffer() index(%d),presentationUs(%lld),ret = %d", mCodecType.c_str(), index, presentationUs, ret);
     return ret;
 }
 
@@ -240,7 +241,7 @@ int MediaCodecWrapper::releaseOutputBuffer(int index, bool render)
     JNIEnv *pEnv = jniEnv.getEnv();
     int ret = pEnv->CallIntMethod(mCodecWrapper, gj_MCWrapper_releaseOutputBuffer, (jint) index,
                                   (jboolean) render);
-    AF_LOGD("releaseOutputBuffer() index(%d),render(%d),ret = %d", index, render, ret);
+    AF_LOGD("%s releaseOutputBuffer() index(%d),render(%d),ret = %d", mCodecType.c_str(), index, render, ret);
     return ret;
 }
 
@@ -250,7 +251,7 @@ jobject MediaCodecWrapper::getInputBuffer(int index)
     JNIEnv *pEnv = jniEnv.getEnv();
     jobject pJobject = pEnv->CallObjectMethod(mCodecWrapper, gj_MCWrapper_getInputBuffer,
                        (jint) index);
-    AF_LOGD("getInputBuffer() index(%d), ret = %p", index, pJobject);
+    AF_LOGD("%s getInputBuffer() index(%d), ret = %p", mCodecType.c_str(), index, pJobject);
     return pJobject;
 }
 
@@ -259,7 +260,7 @@ jobject MediaCodecWrapper::getOutputBuffer(int index)
     JniEnv jniEnv{};
     JNIEnv *pEnv = jniEnv.getEnv();
     jobject pJobject = pEnv->CallObjectMethod(mCodecWrapper, gj_MCWrapper_getOutputBuffer, (jint) index);
-    AF_LOGD("getOutputBuffer() index(%d), ret = %p", index, pJobject);
+    AF_LOGD("%s getOutputBuffer() index(%d), ret = %p", mCodecType.c_str(), index, pJobject);
     return pJobject;
 }
 
@@ -276,7 +277,7 @@ int MediaCodecWrapper::getOutputBufferInfo(int index, OutputBufferInfo *info)
         pEnv->DeleteLocalRef(jInfo);
     }
 
-    AF_LOGD("getOutputBufferInfo() index(%d), ret = %d", index, ret);
+    AF_LOGD("%s getOutputBufferInfo() index(%d), ret = %d", mCodecType.c_str(), index, ret);
     return ret;
 }
 

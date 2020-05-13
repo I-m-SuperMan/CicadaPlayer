@@ -23,17 +23,19 @@ using namespace std;
 
 unique_ptr<Cicada::IDecoder> decoderFactory::create(AFCodecID codec, uint64_t flags, int maxSize)
 {
-    IDecoder *decoder = codecPrototype::create(codec, flags, maxSize);
-
-    if (decoder != nullptr) {
-        return unique_ptr<IDecoder>(decoder);
-    }
-
+//    IDecoder *decoder = codecPrototype::create(codec, flags, maxSize);
+//
+//    if (decoder != nullptr) {
+//        return unique_ptr<IDecoder>(decoder);
+//    }
     return createBuildIn(codec, flags);
 }
 
 unique_ptr<IDecoder> decoderFactory::createBuildIn(const AFCodecID &codec, uint64_t flags)
 {
+    return std::unique_ptr<IDecoder>(new mediaCodecDecoder());
+//    return unique_ptr<IDecoder>(new avcodecDecoder());
+
     if (flags & DECFLAG_HW) {
 #ifdef ANDROID
         return std::unique_ptr<IDecoder>(new mediaCodecDecoder());

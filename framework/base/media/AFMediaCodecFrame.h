@@ -18,6 +18,7 @@ public:
 
     AFMediaCodecFrame(FrameType type, int index, release f_release);
 
+    AFMediaCodecFrame(FrameType type, int index, const uint8_t* bufferPtr,  int64_t bufferSize, release f_release);
 
     void setDiscard(bool discard) override;
 
@@ -44,11 +45,22 @@ public:
 
     ~AFMediaCodecFrame() override;
 
+    const uint8_t* getBufferPtr(){
+        return mBufferPtr;
+    }
+
+    int64_t getBufferSize() {
+        return mBufferSize;
+    }
+
 private:
     int mIndex = -1;
     FrameType mType;
     bool mDiscard{false};
     release mRelease;
+
+    const uint8_t* mBufferPtr;
+    int64_t mBufferSize;
 
 };
 

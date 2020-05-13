@@ -38,8 +38,9 @@ int af_strstart(const char *str, const char *pfx, const char **ptr)
         str++;
     }
 
-    if (!*pfx && ptr)
+    if (!*pfx && ptr) {
         *ptr = str;
+    }
 
     return !*pfx;
 }
@@ -48,11 +49,13 @@ size_t af_strlcpy(char *dst, const char *src, size_t size)
 {
     size_t len = 0;
 
-    while (++len < size && *src)
+    while (++len < size && *src) {
         *dst++ = *src++;
+    }
 
-    if (len <= size)
+    if (len <= size) {
         *dst = 0;
+    }
 
     return len + strlen(src) - 1;
 }
@@ -61,8 +64,9 @@ size_t af_strlcat(char *dst, const char *src, size_t size)
 {
     size_t len = strlen(dst);
 
-    if (size <= len + 1)
+    if (size <= len + 1) {
         return len + strlen(src);
+    }
 
     return len + af_strlcpy(dst + len, src, size - len);
 }
@@ -73,8 +77,9 @@ void c_make_absolute_url(char *buf, int size, const char *base, const char *rel)
 
     /* Absolute path, relative to the current server */
     if (base && strstr(base, "://") && rel[0] == '/') {
-        if (base != buf)
+        if (base != buf) {
             af_strlcpy(buf, base, size);
+        }
 
         sep = strstr(buf, "://");
 
@@ -87,8 +92,9 @@ void c_make_absolute_url(char *buf, int size, const char *base, const char *rel)
                 sep += 3;
                 sep = strchr(sep, '/');
 
-                if (sep)
+                if (sep) {
                     *sep = '\0';
+                }
             }
         }
 
@@ -102,14 +108,16 @@ void c_make_absolute_url(char *buf, int size, const char *base, const char *rel)
         return;
     }
 
-    if (base != buf)
+    if (base != buf) {
         af_strlcpy(buf, base, size);
+    }
 
     /* Strip off any query string from base */
     path_query = strchr(buf, '?');
 
-    if (path_query)
+    if (path_query) {
         *path_query = '\0';
+    }
 
     /* Is relative path just a new query part? */
     if (rel[0] == '?') {
@@ -120,10 +128,11 @@ void c_make_absolute_url(char *buf, int size, const char *base, const char *rel)
     /* Remove the file name from the base url */
     sep = strrchr(buf, '/');
 
-    if (sep)
+    if (sep) {
         sep[1] = '\0';
-    else
+    } else {
         buf[0] = '\0';
+    }
 
     while (af_strstart(rel, "../", NULL) && sep) {
         /* Remove the path delimiter at the end */
@@ -138,10 +147,11 @@ void c_make_absolute_url(char *buf, int size, const char *base, const char *rel)
         }
 
         /* Cut off the directory name */
-        if (sep)
+        if (sep) {
             sep[1] = '\0';
-        else
+        } else {
             buf[0] = '\0';
+        }
 
         rel += 3;
     }
@@ -173,4 +183,59 @@ bool AfString::isLocalURL(const std::string &url)
 
 #endif
     return false;
+}
+
+std::string AfString::HexDump(const char *data, int size)
+{
+    if (data == nullptr) {
+        return "";
+    }
+
+    const int symbolSize = 100;
+    char *buffer = static_cast<char *>(calloc(10 * size, sizeof(char)));
+    char *symbol = static_cast<char *>(calloc(symbolSize, sizeof(char)));
+    char ascii[17];
+    size_t i, j;
+    ascii[16] = '\0';
+
+    for (i = 0; i < size; ++i) {
+        snprintf(symbol, symbolSize, "%02X ", ((unsigned char *)data)[i]);
+        strcat(buffer, symbol);
+        memset(symbol, 0, strlen(symbol));
+
+        if (((unsigned char *)data)[i] >= ' ' && ((unsigned char *)data)[i] <= '~') {
+            ascii[i % 16] = ((unsigned char *)data)[i];
+        } else {
+            ascii[i % 16] = '.';
+        }
+
+        if ((i + 1) % 8 == 0 || i + 1 == size) {
+            strcat(buffer, " ");
+
+            if ((i + 1) % 16 == 0) {
+                snprintf(symbol, symbolSize, "|  %s \n", ascii);
+                strcat(buffer, symbol);
+                memset(symbol, 0, strlen(symbol));
+            } else if (i + 1 == size) {
+                ascii[(i + 1) % 16] = '\0';
+
+                if ((i + 1) % 16 <= 8) {
+                    strcat(buffer, " ");
+                }
+
+                for (j = (i + 1) % 16; j < 16; ++j) {
+                    strcat(buffer, "   ");
+                }
+
+                snprintf(symbol, symbolSize, "|  %s \n", ascii);
+                strcat(buffer, symbol);
+                memset(symbol, 0, strlen(symbol));
+            }
+        }
+    }
+
+    std::string result{buffer};
+    free(symbol);
+    free(buffer);
+    return result;
 }

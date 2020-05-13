@@ -64,7 +64,7 @@ namespace Cicada {
 
     private:
         jobject mCodecWrapper = nullptr;
-
+        std::string mCodecType{};
 
     };
 }

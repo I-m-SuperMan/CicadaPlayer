@@ -21,6 +21,8 @@
 #include <utils/file/FileUtils.h>
 #include <data_source/dataSourcePrototype.h>
 #include <demuxer/IDemuxer.h>
+#include <base/media/AFMediaCodecFrame.h>
+#include <utils/af_string.h>
 
 
 #ifdef __APPLE__
@@ -541,7 +543,7 @@ namespace Cicada {
             int clearShowWhenStop = atoi(value);
             mSet.clearShowWhenStop = (bool) clearShowWhenStop;
         } else if (theKey == "enableVideoTunnelRender") {
-            mSet.bEnableTunnelRender = (atoi(value) != 0);
+            mSet.bEnableTunnelRender = true;//(atoi(value) != 0);
         } else if (theKey == "Analytics.ReportID") {
             if (nullptr == value) {
                 return -1;
@@ -2243,7 +2245,39 @@ namespace Cicada {
                     }
                 }
 
-                mAudioFrameQue.push_back(move(frame));
+                AFMediaCodecFrame *afMediaCodecFrame = dynamic_cast<AFMediaCodecFrame *>(frame.get());
+
+                if (afMediaCodecFrame != nullptr) {
+                    //from MediaCodec, here we transform to AVFrame ,and then send to filter audio render
+                    AVFrame *avFrame  = av_frame_alloc();
+                    avFrame->nb_samples = 1024;
+                    avFrame->channel_layout = 3;
+                    avFrame->pts = afMediaCodecFrame->getInfo().pts;
+                    avFrame->format = AVSampleFormat::AV_SAMPLE_FMT_S16;
+                    avFrame->channels = afMediaCodecFrame->getInfo().audio.channels;
+                    avFrame->sample_rate  = afMediaCodecFrame->getInfo().audio.sample_rate;
+                    int64_t bufferSize = afMediaCodecFrame->getBufferSize();
+                    const  uint8_t *bufferPtr = afMediaCodecFrame->getBufferPtr();
+                    av_frame_get_buffer(avFrame, 0);
+                    av_frame_make_writable(avFrame);
+                    uint8_t *frameSamples = avFrame->data[0];
+                    int lineSize =  avFrame->linesize[0];
+                    AF_LOGD("codec bufferSize = %lld ,bufferPtr = %p,  frame linesize = %d , frameSamples = %p ", bufferSize, bufferPtr, lineSize,
+                            frameSamples);
+
+                    if (bufferPtr != nullptr) {
+                        memcpy(frameSamples, bufferPtr, lineSize);
+                    }
+
+                    AF_LOGE("Codec Buffer %s", AfString::HexDump((const  char *)bufferPtr, 64).c_str());
+                    AF_LOGI("Frame Buffer %s", AfString::HexDump((const  char *)avFrame->data[0], 64).c_str());
+                    unique_ptr<AVAFFrame> finalFrame = std::unique_ptr<AVAFFrame>(new AVAFFrame(&avFrame, AFMediaCodecFrame::FrameType::FrameTypeAudio));
+                    mAudioFrameQue.push_back(move(finalFrame));
+                    afMediaCodecFrame->setDiscard(true);
+                    afMediaCodecFrame = nullptr;
+                } else {
+                    mAudioFrameQue.push_back(move(frame));
+                }
             }
         } while (ret != -EAGAIN);
 
