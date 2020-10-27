@@ -1,12 +1,15 @@
 #define LOG_TAG "mediaCodecDecoder"
 
 #include "mediaCodecDecoder.h"
-#include "mediaCodec.h"
+#include "MediaCodec_Decoder.h"
 #include <utils/frame_work_log.h>
 #include <utils/errors/framework_error.h>
 #include <utils/timer.h>
 #include <utils/Android/systemUtils.h>
 #include <cassert>
+#include <map>
+#include <utils/ffmpeg_utils.h>
+#include <utils/VideoExtraDataParser.h>
 
 #define  MAX_INPUT_SIZE 4
 using namespace std;
@@ -24,22 +27,24 @@ namespace Cicada {
 
     mediaCodecDecoder mediaCodecDecoder::se(0);
 
-    mediaCodecDecoder::mediaCodecDecoder()
-    {
+    mediaCodecDecoder::mediaCodecDecoder() {
         AF_LOGD("android decoder use jni");
         mFlags |= DECFLAG_HW;
-        mDecoder = new MediaCodec_JNI();
+        mDecoder = new MediaCodec_Decoder();
     }
 
-    mediaCodecDecoder::~mediaCodecDecoder()
-    {
+    mediaCodecDecoder::~mediaCodecDecoder() {
         lock_guard<recursive_mutex> func_entry_lock(mFuncEntryMutex);
         delete mDecoder;
+
+        if (mDrmSessionId != nullptr) {
+            free(mDrmSessionId);
+        }
     }
 
-    bool mediaCodecDecoder::checkSupport(AFCodecID codec, uint64_t flags, int maxSize)
-    {
-        if (codec != AF_CODEC_ID_H264 && codec != AF_CODEC_ID_HEVC) {
+    bool mediaCodecDecoder::checkSupport(AFCodecID codec, uint64_t flags, int maxSize) {
+        if (codec != AF_CODEC_ID_H264 && codec != AF_CODEC_ID_HEVC
+            && codec != AF_CODEC_ID_AAC) {
             return false;
         }
 
@@ -65,8 +70,7 @@ namespace Cicada {
         return true;
     }
 
-    int mediaCodecDecoder::init_decoder(const Stream_meta *meta, void *voutObsr, uint64_t flags)
-    {
+    int mediaCodecDecoder::init_decoder(const Stream_meta *meta, void *voutObsr, uint64_t flags) {
         if (meta->pixel_fmt == AF_PIX_FMT_YUV422P || meta->pixel_fmt == AF_PIX_FMT_YUVJ422P) {
             return -ENOSPC;
         }
@@ -80,37 +84,66 @@ namespace Cicada {
         }
 
         const char *mime;
-
         if (meta->codec == AF_CODEC_ID_H264) {
+            codecType = CODEC_VIDEO;
             mime = "video/avc";
         } else if (meta->codec == AF_CODEC_ID_HEVC) {
+            codecType = CODEC_VIDEO;
             mime = "video/hevc";
+        } else if (meta->codec == AF_CODEC_ID_AAC) {
+            codecType = CODEC_AUDIO;
+            mime = "audio/mp4a-latm";
         } else {
             AF_LOGE("codec is %d, not support", meta->codec);
             return -ENOSPC;
         }
 
-        lock_guard<recursive_mutex> func_entry_lock(mFuncEntryMutex);
-        int ret;
-        ret = mDecoder->init(mime, CATEGORY_VIDEO, static_cast<jobject>(voutObsr));
 
-        if (ret == MC_ERROR || ret < 0) {
-            AF_LOGE("failed to init mDecoder, ret %d", ret);
-            mDecoder->unInit();
-            return gen_framework_errno(error_class_codec, codec_error_video_device_error);
+        lock_guard<recursive_mutex> func_entry_lock(mFuncEntryMutex);
+
+        int ret = -1;
+
+        if (meta->keyUrl != nullptr && meta->keyFormat != nullptr
+            && (strcmp(meta->keyFormat, "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed") == 0)) {
+            mSecureBuffer = true;
+            mDrmSessionSize = 0;
+            if (mDrmSessionId != nullptr) {
+                free(mDrmSessionId);
+            }
+
+            if (mDrmSessionManager != nullptr) {
+                ret = mDrmSessionManager->requireDrmSession(&mDrmSessionId, &mDrmSessionSize,
+                                                            meta->keyUrl,
+                                                            meta->keyFormat, mime, "");
+                if (mDrmSessionId != nullptr) {
+                    ret = mDecoder->setDrmInfo("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed",
+                                               mDrmSessionId, mDrmSessionSize);
+                }
+            }
+
+            if (ret < 0) {
+                AF_LOGE("failed to config mDecoder drm info %d", ret);
+                releaseDecoder();
+                ret = gen_framework_errno(error_class_codec, codec_error_video_device_error);
+                return ret;
+            }
         }
 
-        mc_args args{};
-        args.video.width = meta->width;
-        args.video.height = meta->height;
-        args.video.angle = 0;
-        ret = mDecoder->configure(0, args);
+        //TODO 加密流 保持原样，不加密流，都mergehead
+        //TODO 找腾云生成测试流
+        ret = setSCD(meta);//TODO 多码率切换。。 ts 0001/
+        if (codecType == CODEC_VIDEO) {
+            ret = mDecoder->configureVideo(mime, meta->width, meta->height, 0,
+                                           static_cast<jobject>(voutObsr));
+        } else if (codecType == CODEC_AUDIO) {
+            ret = mDecoder->configureAudio(mime, meta->samplerate, meta->channels, meta->isAdts);
+        }
 
         if (ret >= 0) {
             ret = 0;
         } else {
             AF_LOGE("failed to config mDecoder rv %d", ret);
-            mDecoder->unInit();
+            releaseDecoder();
             ret = gen_framework_errno(error_class_codec, codec_error_video_device_error);
         }
 
@@ -127,8 +160,44 @@ namespace Cicada {
         return ret;
     }
 
-    void mediaCodecDecoder::flush_decoder()
-    {
+    int mediaCodecDecoder::setSCD(const Stream_meta *meta) {
+        if(meta->extradata == nullptr){
+            return -1;
+        }
+
+        //TODO 直接塞extradata ，看看是否可以。
+        if (meta->codec == AF_CODEC_ID_H264) {
+            VideoExtraDataParser parser(AV_CODEC_ID_H264 , meta->extradata, meta->extradata_size);
+            int ret = parser.parser();
+            if (ret >= 0) {
+                std::list< CodecSpecificData> csdList{};
+                CodecSpecificData csd0{};
+                csd0.setScd("csd-0",parser.sps_data, parser.sps_data_size);
+                csdList.push_back(csd0);
+                CodecSpecificData csd1{};
+                csd1.setScd("csd-1", parser.pps_data, parser.sps_data_size);
+                csdList.push_back(csd1);
+                mDecoder->setCodecSpecificData(csdList);
+
+                csdList.clear();
+            }
+
+            return ret;
+        } else if (meta->codec == AF_CODEC_ID_AAC) {
+            std::list<CodecSpecificData> csdList{};
+            CodecSpecificData csd0{};
+            csd0.setScd("csd-0", meta->extradata, meta->extradata_size);
+            csdList.push_back(csd0);
+            mDecoder->setCodecSpecificData(csdList);
+
+            csdList.clear();
+            return 0;
+        } else {
+            return -1;
+        }
+    }
+
+    void mediaCodecDecoder::flush_decoder() {
         lock_guard<recursive_mutex> func_entry_lock(mFuncEntryMutex);
         mOutputFrameCount = 0;
 
@@ -151,8 +220,7 @@ namespace Cicada {
         mInputFrameCount = 0;
     }
 
-    void mediaCodecDecoder::close_decoder()
-    {
+    void mediaCodecDecoder::close_decoder() {
         lock_guard<recursive_mutex> func_entry_lock(mFuncEntryMutex);
 
         // stop decoder.
@@ -160,17 +228,44 @@ namespace Cicada {
         if (mbInit) {
             mFlushState = 0;
             mDecoder->stop();
-            mDecoder->unInit();
+            releaseDecoder();
             mbInit = false;
         }
 
         mInputFrameCount = 0;
     }
 
+    void mediaCodecDecoder::releaseDecoder() {
+        if (mDecoder != nullptr) {
+            mDecoder->release();
+        }
 
-    int mediaCodecDecoder::enqueue_decoder(unique_ptr<IAFPacket> &pPacket)
-    {
-        int index = mDecoder->dequeue_in(1000);
+        if (mDrmSessionManager != nullptr && mDrmSessionId != nullptr) {
+            mDrmSessionManager->releaseDrmSession(mDrmSessionId, mDrmSessionSize);
+        }
+    }
+
+    int mediaCodecDecoder::enqueue_decoder(unique_ptr<IAFPacket> &pPacket) {
+
+        if (mSecureBuffer && mDrmSessionManager != nullptr) {
+
+            int state = mDrmSessionManager->getSessionState(mDrmSessionId, mDrmSessionSize);
+            if (state == SESSION_STATE_IDLE) {
+                AF_LOGD("drm not ready");
+                return -EAGAIN;
+            } else if (state == SESSION_STATE_ERROR) {
+                //TODO 加新的错误码，错误描述
+                AF_LOGE("drm error");
+                return -ENOSPC;
+            } else if (state == SESSION_STATE_RELEASED) {
+                AF_LOGE("drm relesased");
+                return -ENOSPC;
+            }else if(state == SESSION_STATE_OPENED){
+                // drm has opened
+            }
+
+        }
+        int index = mDecoder->dequeueInputBufferIndex(1000);
 
         if (index == MC_ERROR) {
             AF_LOGE("dequeue_in error.");
@@ -201,7 +296,19 @@ namespace Cicada {
                 AF_LOGD("queue eos\n");
             }
 
-            ret = mDecoder->queue_in(index, data, static_cast<size_t>(size), pts, false);
+            if (mSecureBuffer) {
+                IAFPacket::EncryptionInfo encryptionInfo{};
+                if (pPacket != nullptr) {
+                    pPacket->getEncryptionInfo(&encryptionInfo);
+                }
+
+                ret = mDecoder->queueSecureInputBuffer(index, data, static_cast<size_t>(size),
+                                                       &encryptionInfo, pts,
+                                                       false);
+            } else {
+                ret = mDecoder->queueInputBuffer(index, data, static_cast<size_t>(size), pts,
+                                                 false);
+            }
 
             if (ret < 0) {
                 AF_LOGE(" mDecoder->queue_in error \n");
@@ -215,7 +322,7 @@ namespace Cicada {
 
             if (pPacket != nullptr) {
                 AF_LOGI("send Frame mFlushState = 2. pts %"
-                        PRId64, pPacket->getInfo().pts);
+                                PRId64, pPacket->getInfo().pts);
             }
 
             mFlushState = 2;
@@ -231,11 +338,10 @@ namespace Cicada {
         return ret;
     }
 
-    int mediaCodecDecoder::dequeue_decoder(unique_ptr<IAFFrame> &pFrame)
-    {
+    int mediaCodecDecoder::dequeue_decoder(unique_ptr<IAFFrame> &pFrame) {
         int ret;
         int index;
-        index = mDecoder->dequeue_out(1000);
+        index = mDecoder->dequeueOutputBufferIndex(1000);
 
         if (index == MC_ERROR) {
             AF_LOGE("dequeue_out occur error. flush state %d", mFlushState);
@@ -244,44 +350,94 @@ namespace Cicada {
             return -EAGAIN;
         } else if (index == MC_INFO_OUTPUT_FORMAT_CHANGED) {
             mc_out out{};
-            mDecoder->get_out(index, &out, false);
-            mVideoHeight = out.conf.video.height;
+            mDecoder->getOutput(index, &out, false);
 
-            if (out.conf.video.crop_bottom != MC_ERROR && out.conf.video.crop_top != MC_ERROR) {
-                mVideoHeight = out.conf.video.crop_bottom + 1 - out.conf.video.crop_top;
-            }
+            if (codecType == CODEC_VIDEO) {
+                mVideoHeight = out.conf.video.height;
 
-            mVideoWidth = out.conf.video.width;
+                if (out.conf.video.crop_bottom != MC_ERROR && out.conf.video.crop_top != MC_ERROR) {
+                    mVideoHeight = out.conf.video.crop_bottom + 1 - out.conf.video.crop_top;
+                }
 
-            if (out.conf.video.crop_right != MC_ERROR && out.conf.video.crop_left != MC_ERROR) {
-                mVideoWidth = out.conf.video.crop_right + 1 - out.conf.video.crop_left;
+                mVideoWidth = out.conf.video.width;
+
+                if (out.conf.video.crop_right != MC_ERROR && out.conf.video.crop_left != MC_ERROR) {
+                    mVideoWidth = out.conf.video.crop_right + 1 - out.conf.video.crop_left;
+                }
+            } else if (codecType == CODEC_AUDIO) {
+                channel_count = out.conf.audio.channel_count;
+                sample_rate = out.conf.audio.sample_rate;
+                format = out.conf.audio.format;
             }
 
             return -EAGAIN;
         } else if (index >= 0) {
             mc_out out{};
-            ret = mDecoder->get_out(index, &out, false);
+            ret = mDecoder->getOutput(index, &out, codecType != CODEC_VIDEO);
             auto item = mDiscardPTSSet.find(out.buf.pts);
 
             if (item != mDiscardPTSSet.end()) {
-                mDecoder->release_out(index, false);
+                mDecoder->releaseOutputBuffer(index, false);
                 mDiscardPTSSet.erase(item);
                 return -EAGAIN;
             }
 
-            pFrame = unique_ptr<AFMediaCodecFrame>(new AFMediaCodecFrame(IAFFrame::FrameTypeVideo, index,
-            [this](int index, bool render) {
-                mDecoder->release_out(index, render);
-            }));
             // AF_LOGD("mediacodec out pts %" PRId64, out.buf.pts);
-            pFrame->getInfo().video.width = mVideoWidth;
-            pFrame->getInfo().video.height = mVideoHeight;
+            if (codecType == CODEC_VIDEO) {
+                pFrame = unique_ptr<AFMediaCodecFrame>(
+                        new AFMediaCodecFrame(IAFFrame::FrameTypeVideo, index,
+                                              [this](int index, bool render) {
+                                                  mDecoder->releaseOutputBuffer(index, render);
+                                              }));
+                pFrame->getInfo().video.width = mVideoWidth;
+                pFrame->getInfo().video.height = mVideoHeight;
+            } else if (codecType == CODEC_AUDIO) {
+
+                if (out.b_eos) {
+                    return STATUS_EOS;
+                }
+
+                assert(out.buf.p_ptr != nullptr);
+
+                if (out.buf.p_ptr == nullptr) {
+                    return -EAGAIN;
+                }
+
+                AFSampleFormat afFormat = AFSampleFormat::AF_SAMPLE_FMT_NONE;
+                if (format < 0 || format == 2) {
+                    afFormat = AF_SAMPLE_FMT_S16;
+                } else if (format == 3) {
+                    afFormat = AF_SAMPLE_FMT_U8;
+                } else if (format == 4) {
+                    afFormat = AF_SAMPLE_FMT_S32;
+                }
+
+                assert(afFormat != AFSampleFormat::AF_SAMPLE_FMT_NONE);
+
+                AVFrame *avFrame = av_frame_alloc();
+                avFrame->channels = channel_count;
+                avFrame->sample_rate = sample_rate;
+                avFrame->format = afFormat;
+
+                int64_t bufferSize = out.buf.size;
+                uint8_t *bufferPtr = const_cast<uint8_t *>(out.buf.p_ptr);
+                int sampleSize = av_get_bytes_per_sample((enum AVSampleFormat) (avFrame->format));
+                avFrame->nb_samples = (int) (bufferSize / (avFrame->channels * sampleSize));
+
+                av_frame_get_buffer(avFrame, 0);
+                av_frame_make_writable(avFrame);
+                uint8_t *frameSamples = avFrame->data[0];
+                memcpy(frameSamples, bufferPtr, bufferSize);
+
+                pFrame = unique_ptr<AVAFFrame>(new AVAFFrame(&avFrame, IAFFrame::FrameTypeAudio));
+                mDecoder->releaseOutputBuffer(index, false);
+
+                pFrame->getInfo().audio.sample_rate = sample_rate;
+                pFrame->getInfo().audio.channels = channel_count;
+                pFrame->getInfo().audio.format = afFormat;
+            }
 
             pFrame->getInfo().pts = out.buf.pts != -1 ? out.buf.pts : INT64_MIN;
-
-            if (out.b_eos) {
-                return STATUS_EOS;
-            }
 
             return 0;
         } else {

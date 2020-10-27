@@ -68,9 +68,18 @@ void copyPCMData2(const AVFrame *frame, fillBufferCallback fillCallback, void *a
 
 bool updateH26xHeader2xxc(AVCodecParameters *par);
 
+bool isADTS(const AVPacket* pkt);
 
 const char *getErrorString(int err);
 
+int parse_h264_extraData(AVCodecContext *avctx , const uint8_t* extraData,int extraData_size,
+                         uint8_t** sps_data ,int*sps_data_size,
+                         uint8_t** pps_data, int* pps_data_size);
+
+int parse_h265_extraData(AVCodecContext *avctx, const uint8_t* extradata,int extradata_size,
+                         uint8_t** vps_data ,int*vps_data_size,
+                         uint8_t** sps_data ,int*sps_data_size,
+                         uint8_t** pps_data, int* pps_data_size);
 
 #ifdef __cplusplus
 };

@@ -20,6 +20,8 @@
 #include <utils/Android/JniException.h>
 #include <utils/Android/FindClass.h>
 #include <utils/CicadaJSON.h>
+#include <utils/Android/NewByteArray.h>
+#include <utils/Android/JniUtils.h>
 
 
 #include "NativeBase.h"
@@ -57,6 +59,9 @@ jmethodID gj_NativePlayer_onSwitchStreamSuccess = nullptr;
 jmethodID gj_NativePlayer_onBufferPositionUpdate = nullptr;
 jmethodID gj_NativePlayer_onCurrentPositionUpdate = nullptr;
 jmethodID gj_NativePlayer_onSubtitleExtAdded = nullptr;
+
+jmethodID gj_NativePlayer_requestProvision = nullptr;
+jmethodID gj_NativePlayer_requestKey = nullptr;
 
 void NativeBase::java_Construct(JNIEnv *env, jobject instance , jstring name)
 {
@@ -101,6 +106,7 @@ void NativeBase::java_Construct(JNIEnv *env, jobject instance , jstring name)
     listener.SubtitleExtAdd = jni_onSubTitleExtAdd;
     auto *apsaraPlayer = privateData->player;
     apsaraPlayer->SetListener(listener);
+    apsaraPlayer->setDrmRequestCallback(onRequestProvisionCallback ,onRequestKeyCallback , userData);
 }
 
 void NativeBase::java_SetConnectivityManager(JNIEnv *env, jobject instance, jobject connectManager)
@@ -877,6 +883,63 @@ void NativeBase::java_SetVideoBackgroundColor(JNIEnv *env, jobject instance, jin
 
 //callback...
 
+
+ void NativeBase::onRequestProvisionCallback(void**responseData, int* responseSize, const char* url, const char *data, int size , void *userData){
+     if (userData == nullptr) {
+         return;
+     }
+
+     JniEnv Jenv;
+     JNIEnv *mEnv = Jenv.getEnv();
+
+     if (mEnv == nullptr) {
+         return;
+     }
+
+     NewStringUTF jUrl(mEnv , url);
+     NewByteArray jData(mEnv , data, size);
+     jobject response = mEnv->CallObjectMethod((jobject) userData, gj_NativePlayer_requestProvision,jUrl.getString(),jData.getArray());
+     if(response != nullptr) {
+         jbyteArray  responseArray = (jbyteArray)response;
+         *responseSize = mEnv->GetArrayLength(responseArray);
+         *responseData = JniUtils::jByteArrayToChars(mEnv, responseArray);
+         mEnv->DeleteLocalRef(response);
+     }else{
+         *responseData = nullptr;
+         *responseSize = 0;
+     }
+     JniException::clearException(mEnv);
+
+}
+ void NativeBase::onRequestKeyCallback(void**responseData, int* responseSize, const char* url, const char *data, int size , void *userData){
+     if (userData == nullptr) {
+         return;
+     }
+
+     JniEnv Jenv;
+     JNIEnv *mEnv = Jenv.getEnv();
+
+     if (mEnv == nullptr) {
+         return;
+     }
+
+     NewStringUTF jUrl(mEnv , url);
+     NewByteArray jData(mEnv , data, size);
+     jobject response = mEnv->CallObjectMethod((jobject) userData, gj_NativePlayer_requestKey,
+                                               jUrl.getString(), jData.getArray());
+     if (response != nullptr) {
+         jbyteArray responseArray = (jbyteArray) response;
+         *responseSize = mEnv->GetArrayLength(responseArray);
+         *responseData = JniUtils::jByteArrayToChars(mEnv, responseArray);
+         mEnv->DeleteLocalRef(response);
+     } else {
+         *responseData = nullptr;
+         *responseSize = 0;
+     }
+     JniException::clearException(mEnv);
+}
+
+
 void NativeBase::init(JNIEnv *env)
 {
     if (gj_NativePlayer_Class == nullptr) {
@@ -954,6 +1017,12 @@ void NativeBase::init(JNIEnv *env)
         gj_NativePlayer_onSubtitleExtAdded = env->GetMethodID(gj_NativePlayer_Class,
                                              "onSubtitleExtAdded",
                                              "(ILjava/lang/String;)V");
+        gj_NativePlayer_requestProvision = env->GetMethodID(gj_NativePlayer_Class,
+                                             "requestProvision",
+                                             "(Ljava/lang/String;[B)[B");
+        gj_NativePlayer_requestKey = env->GetMethodID(gj_NativePlayer_Class,
+                                             "requestKey",
+                                             "(Ljava/lang/String;[B)[B");
         JniException::clearException(env);
     }
 }
@@ -1324,6 +1393,7 @@ void NativeBase::jni_onSubTitleExtAdd(int64_t index, const void *url, void *user
                          jmsg);
     JniException::clearException(pEnv);
 }
+
 
 void NativeBase::jni_onShowSubtitle(int64_t id, int64_t size, const void *content, void *userData)
 {

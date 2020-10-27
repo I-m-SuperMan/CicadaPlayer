@@ -14,7 +14,9 @@ target_sources(videodec PRIVATE
         decoderFactory.cpp
         decoderFactory.h
         ActiveDecoder.cpp
-        ActiveDecoder.h)
+        ActiveDecoder.h
+        IDrmSessionManager.cpp
+        IDrmSessionManager.h)
 
 if (ENABLE_AVCODEC_DECODER)
     target_compile_definitions(videodec PRIVATE ENABLE_AVCODEC_DECODER)
@@ -28,12 +30,16 @@ endif ()
 if (ANDROID AND ENABLE_MEDIA_CODEC_DECODER)
     target_compile_definitions(videodec PRIVATE ENABLE_MEDIA_CODEC_DECODER)
     target_sources(videodec PRIVATE
-            Android/mediaCodec.h
-            Android/mediaCodec.cpp
-            Android/mediacodec_jni.h
-            Android/mediacodec_jni.cpp
             Android/mediaCodecDecoder.h
             Android/mediaCodecDecoder.cpp
+            Android/MediaCodec_Decoder.h
+            Android/MediaCodec_Decoder.cpp
+            Android/OutputBufferInfo.h
+            Android/OutputBufferInfo.cpp
+            Android/JEncryptionInfo.h
+            Android/JEncryptionInfo.cpp
+            Android/AndroidDrmSessionManager.cpp
+            Android/AndroidDrmSessionManager.h
             )
 endif ()
 

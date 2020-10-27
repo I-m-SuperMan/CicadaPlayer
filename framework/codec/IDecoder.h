@@ -40,6 +40,7 @@ typedef enum DECODER_FRAME_STATUS {
 
 #include <base/media/IAFPacket.h>
 #include "IVideoFrame.h"
+#include "IDrmSessionManager.h"
 
 namespace Cicada {
 
@@ -57,8 +58,7 @@ namespace Cicada {
 
         IDecoder() = default;
 
-        virtual ~IDecoder()
-        {
+        virtual ~IDecoder() {
             clean_error();
         }
 
@@ -70,8 +70,7 @@ namespace Cicada {
 
         virtual void preClose() = 0;
 
-        virtual void setEOF()
-        {
+        virtual void setEOF() {
 
         }
 
@@ -83,8 +82,7 @@ namespace Cicada {
          *       -AGAIN time out was reached
          */
 
-        virtual int send_packet(std::unique_ptr<IAFPacket> &packet, uint64_t timeOut)
-        {
+        virtual int send_packet(std::unique_ptr<IAFPacket> &packet, uint64_t timeOut) {
             return -ENOTSUP;
         };
 
@@ -110,8 +108,7 @@ namespace Cicada {
          * you can use this to decide stop or continue the decoding
          * it will be reset to zero when flush or close
          */
-        virtual int get_error_frame_no()
-        {
+        virtual int get_error_frame_no() {
 #if AF_HAVE_PTHREAD
             std::lock_guard<std::mutex> lock(mVideoMutex);
 #endif
@@ -121,8 +118,7 @@ namespace Cicada {
         /*
          *  get the error info of one packet
          */
-        virtual decoder_error_info get_error_frame_info(int index)
-        {
+        virtual decoder_error_info get_error_frame_info(int index) {
 #if AF_HAVE_PTHREAD
             std::lock_guard<std::mutex> lock(mVideoMutex);
 #endif
@@ -133,8 +129,7 @@ namespace Cicada {
          * clean the errors
          *
          */
-        virtual void clean_error()
-        {
+        virtual void clean_error() {
 #if AF_HAVE_PTHREAD
             std::lock_guard<std::mutex> lock(mVideoMutex);
 #endif
@@ -145,20 +140,17 @@ namespace Cicada {
          * get the decoder flags after open, not equal to the flags passed by open
          */
 
-        virtual int getFlags()
-        {
+        virtual int getFlags() {
             return mFlags;
         }
 
         // return true if could recover
-        virtual bool enterBackground(bool back)
-        {
+        virtual bool enterBackground(bool back) {
             mInBackground = back;
             return true;
         }
 
-        std::string getName()
-        {
+        std::string getName() {
             return mName;
         }
 
@@ -167,6 +159,10 @@ namespace Cicada {
         virtual int getRecoverQueueSize() = 0;
 
         virtual uint32_t getInputPaddingSize() = 0;
+
+        virtual void setDrmSessionManager(IDrmSessionManager *drmSessionManager) {
+            mDrmSessionManager = drmSessionManager;
+        }
 
     protected:
         std::string mName;
@@ -178,6 +174,8 @@ namespace Cicada {
         bool mInBackground = false;
         bool bNeedKeyFrame{true};
         int64_t keyPts = INT64_MIN;
+
+        IDrmSessionManager *mDrmSessionManager = nullptr;
     };
 }
 

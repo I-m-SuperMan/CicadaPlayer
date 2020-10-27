@@ -241,6 +241,12 @@ namespace Cicada {
             mCRArg = arg;
         }
 
+        virtual void setDrmRequestCallback(drmRequestCb provisionCb ,drmRequestCb keyCb , void* userData) {
+            mRequestProvisionCb = provisionCb;
+            mRequestKeyCb = keyCb;
+            mRequestUserData = userData;
+        }
+
         virtual int getCurrentStreamMeta(Stream_meta *meta, StreamType type) = 0;
 
         virtual void setErrorConverter(ErrorConverter *converter)
@@ -271,6 +277,10 @@ namespace Cicada {
         void* mCRArg = nullptr;
 
         ErrorConverter *mErrorConverter = nullptr;
+
+        drmRequestCb mRequestProvisionCb = nullptr;
+        drmRequestCb mRequestKeyCb = nullptr;
+        void* mRequestUserData = nullptr;
     };
 
 }

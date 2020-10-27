@@ -150,7 +150,7 @@ namespace Cicada {
         virtual void setBitStreamFormat(bool vMergeHeader, bool aMergeHeader)
         {
             mMergeVideoHeader = vMergeHeader;
-            mMergerAudioHeader = aMergeHeader;
+            mMergeAudioHeader = aMergeHeader;
         }
 
         virtual void setDemuxerCb(std::function<void(std::string, std::string)> func)
@@ -187,7 +187,7 @@ namespace Cicada {
         IDataSource::SourceConfig sourceConfig{};
 
         bool mMergeVideoHeader = false;
-        bool mMergerAudioHeader = false;
+        bool mMergeAudioHeader = false;
 
         DemuxerMetaInfo *mMetaInfo = nullptr;
         std::string mName = "IDemuxer";

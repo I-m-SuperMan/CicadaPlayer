@@ -60,6 +60,8 @@ public:
         return mMagicKey;
     }
 
+    bool getEncryptionInfo(EncryptionInfo* dst) override;
+
 private:
     AVPacket *mpkt{nullptr};
     bool mIsProtected;

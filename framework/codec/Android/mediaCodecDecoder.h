@@ -11,11 +11,14 @@
 #include <base/media/AVAFPacket.h>
 #include <queue>
 #include <base/media/AFMediaCodecFrame.h>
-#include "mediaCodec.h"
-#include "mediacodec_jni.h"
 #include "codec/ActiveDecoder.h"
 #include "../codecPrototype.h"
+#include "MediaCodec_Decoder.h"
 #include <set>
+
+
+#define CODEC_VIDEO (0)
+#define CODEC_AUDIO (1)
 
 namespace Cicada{
     class mediaCodecDecoder : public ActiveDecoder, private codecPrototype {
@@ -44,6 +47,9 @@ namespace Cicada{
     private:
         static bool checkSupport(AFCodecID codec, uint64_t flags, int maxSize);
 
+        int setSCD(const Stream_meta *meta);
+
+        void releaseDecoder();
 
     private:
         explicit mediaCodecDecoder(int dummy)
@@ -67,7 +73,18 @@ namespace Cicada{
     private:
         int mVideoWidth{0};
         int mVideoHeight{0};
-        mediaCodec *mDecoder{nullptr};
+
+        int channel_count{0};
+        int sample_rate{0};
+        int format{0};
+
+        int codecType = CODEC_VIDEO;
+
+
+        void *mDrmSessionId = nullptr;
+        int mDrmSessionSize = 0;
+        bool mSecureBuffer = false;
+        MediaCodec_Decoder *mDecoder{nullptr};
 
         std::recursive_mutex mFuncEntryMutex;
         bool mbInit{false};
@@ -84,6 +101,7 @@ namespace Cicada{
         volatile int mFlushState{0};
 
         std::set<int64_t> mDiscardPTSSet;
+
     };
 }
 

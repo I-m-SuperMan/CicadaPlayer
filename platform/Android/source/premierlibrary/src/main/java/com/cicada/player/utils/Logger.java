@@ -1,5 +1,7 @@
 package com.cicada.player.utils;
 
+import android.util.Log;
+
 public class Logger {
 
     static {
@@ -115,6 +117,8 @@ public class Logger {
         return mLogCallback;
     }
 
+    private static boolean sConsoleLogEnabled  = true;
+
     /**
      * 设置日志回调
      * @param logLevel 日志等级。 见{@linkplain LogLevel}。
@@ -132,6 +136,7 @@ public class Logger {
     }
 
     public static void enableConsoleLog(boolean bEnabled) {
+        sConsoleLogEnabled = bEnabled;
         nEnableConsoleLog(bEnabled);
     }
 
@@ -166,6 +171,44 @@ public class Logger {
                 return LogLevel.AF_LOG_LEVEL_TRACE;
             default:
                 return LogLevel.AF_LOG_LEVEL_DEBUG;
+        }
+    }
+
+    public static void e(String tag, String msg){
+        if(sConsoleLogEnabled && GetLogLevel() >= LogLevel.AF_LOG_LEVEL_ERROR.getValue() ){
+            Log.e(tag , msg);
+        }
+    }
+
+    public static void w(String tag, String msg){
+        if(sConsoleLogEnabled && GetLogLevel() >= LogLevel.AF_LOG_LEVEL_WARNING.getValue() ){
+            Log.w(tag , msg);
+        }
+    }
+
+    public static void i(String tag, String msg){
+        if(sConsoleLogEnabled && GetLogLevel() >= LogLevel.AF_LOG_LEVEL_INFO.getValue() ){
+            Log.i(tag , msg);
+        }
+    }
+
+    public static void d(String tag, String msg){
+        if(sConsoleLogEnabled && GetLogLevel() >= LogLevel.AF_LOG_LEVEL_DEBUG.getValue() ){
+            Log.d(tag , msg);
+        }
+    }
+
+    public static void v(String tag, String msg){
+        if(sConsoleLogEnabled && GetLogLevel() >= LogLevel.AF_LOG_LEVEL_TRACE.getValue() ){
+            Log.v(tag , msg);
+        }
+    }
+
+    public static void t() {
+        if(sConsoleLogEnabled && GetLogLevel() >= LogLevel.AF_LOG_LEVEL_TRACE.getValue() ){
+            Thread thread = Thread.currentThread(); // 获取当前线程
+            StackTraceElement[] trace = thread.getStackTrace(); // 获取当前线程的栈快照(入栈方法的数据)
+            Log.v(trace[3].getFileName() , trace[3].getMethodName() + ":" + trace[3].getLineNumber());
         }
     }
 

@@ -846,6 +846,15 @@ namespace Cicada {
                 return ret;
             }
         } else if (mCurSeg->encryption.method == SegmentEncryption::AES_SAMPLE) {
+
+            string &keyFormat = mCurSeg->encryption.keyFormat;
+
+            if(keyFormat == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed" /*WideVine*/
+                || keyFormat == "com.apple.streamingkeydelivery"/*FairPlay*/) {
+                //will decrypted by Decoder, or system player.
+                return 0;
+            }
+
             ret = updateSampleAesDecrypter();
 
             if (ret < 0) {
@@ -1042,6 +1051,9 @@ namespace Cicada {
                     mStreamStartTimeMap[i].seamlessPoint = true;
                 }
 
+                mCurKeyUrl = mCurSeg->encryption.keyUrl;
+                mCurKeyFormat = mCurSeg->encryption.keyFormat;
+
                 mCurSeg = nullptr;
             }
 
@@ -1133,6 +1145,9 @@ namespace Cicada {
         if (!mPTracker->getDescriptionInfo().empty()) {
             meta->description = strdup(mPTracker->getDescriptionInfo().c_str());
         }
+
+        meta->keyUrl = strdup(mCurKeyUrl.c_str());
+        meta->keyFormat = strdup(mCurKeyFormat.c_str());
 
         return 0;
     }

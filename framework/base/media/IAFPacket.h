@@ -9,6 +9,7 @@
 #include <cstdint>
 //#include <functional>
 #include <vector>
+#include <list>
 #include <memory>
 #include <cstring>
 #include <string>
@@ -47,7 +48,42 @@ public:
         ~packetInfo()
         {
             delete[](extra_data);
+        }
+    };
 
+    struct SubsampleEncryptionInfo {
+        unsigned int bytes_of_clear_data{0};
+        unsigned int bytes_of_protected_data{0};
+    };
+
+    struct EncryptionInfo {
+        std::string scheme{};
+
+        uint32_t crypt_byte_block{0};
+        uint32_t skip_byte_block{0};
+
+        uint8_t *key_id{nullptr};
+        uint32_t key_id_size{0};
+
+        uint8_t *iv{nullptr};
+        uint32_t iv_size{0};
+
+        std::list<SubsampleEncryptionInfo> subsamples{};
+        uint32_t subsample_count{0};
+
+        ~EncryptionInfo()
+        {
+            if (key_id != nullptr) {
+                free(key_id);
+            }
+
+            if (iv != nullptr) {
+                free(iv);
+            }
+
+            if (!subsamples.empty()) {
+                subsamples.clear();
+            }
         }
     };
 
@@ -97,16 +133,17 @@ public:
         return "";
     }
 
-    virtual void setMagicKey(const std::string & key)
+    virtual void setMagicKey(const std::string &key)
+    {}
+
+    virtual bool getEncryptionInfo(EncryptionInfo *dst)
     {
-
+        return false;
     }
-
 
 protected:
     packetInfo mInfo{};
     bool mbDiscard{};
-
 };
 
 class CICADA_CPLUS_EXTERN IAFFrame {
@@ -164,6 +201,7 @@ public:
             audioInfo audio;
         };
     };
+
 public:
     IAFFrame() = default;
 
@@ -208,4 +246,4 @@ protected:
 };
 
 
-#endif //FRAMEWORK_IAFPACKET_H
+#endif//FRAMEWORK_IAFPACKET_H

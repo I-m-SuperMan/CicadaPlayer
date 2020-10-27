@@ -103,6 +103,8 @@ namespace Cicada {
         */
         void SetDataSourceChangedCallback(function<void(const string &)> urlChangedCallbak);
 
+        void setDrmRequestCallback(drmRequestCb provisionCb ,drmRequestCb keyCb , void* userData);
+
         /*
          *select specific track info
          */

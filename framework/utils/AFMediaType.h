@@ -211,6 +211,7 @@ typedef struct {
     int frame_size;
     int profile;
     int bits_per_coded_sample;
+    int isAdts;
     enum AFSampleFormat sample_fmt;
 
     //video only
@@ -235,6 +236,11 @@ typedef struct {
     char *description;
 
     Source_meta *meta;
+
+    //add for stand drm(WideVine,FairPlay...)
+    char* keyUrl;
+    char* keyFormat;
+
 } Stream_meta;
 
 
@@ -260,6 +266,8 @@ typedef int  (*decoder_buf_callback)(unsigned char *buffer[], int nb_samples, in
 typedef int  (*decoder_buf_callback_video)(unsigned char *buffer[], int linesize[], long long pts,
                                            int type,
                                            void *CbpHandle);
+
+typedef void (*drmRequestCb)( void**responseData, int* responseSize, const char* url, const char *data, int size , void *arg);
 
 enum dec_flag {
     dec_flag_dummy,

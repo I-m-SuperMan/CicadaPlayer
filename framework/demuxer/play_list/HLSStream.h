@@ -218,6 +218,9 @@ namespace Cicada {
         int64_t mLiveStartIndex{-3};//segment index to start live streams at (negative values are from the end)
 
         std::string mDRMMagicKey{};
+
+        std::string mCurKeyUrl{};
+        std::string mCurKeyFormat{};
     };
 }
 

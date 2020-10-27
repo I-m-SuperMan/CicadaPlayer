@@ -290,18 +290,26 @@ namespace Cicada {
                     } else if (keytag->getAttributeByName("METHOD") &&
                                keytag->getAttributeByName("METHOD")->value == "SAMPLE-AES" &&
                                keytag->getAttributeByName("URI")) {
-                        encryption.method = SegmentEncryption::AES_SAMPLE;
-                        encryption.iv.clear();
-                        encryption.keyUrl = keytag->getAttributeByName("URI")->quotedString();
 
-                        if (keytag->getAttributeByName("IV")) {
-                            encryption.iv.clear();
-                            encryption.iv = keytag->getAttributeByName("IV")->hexSequence();
-                            encryption.ivStatic = true;
+                        string keyFormat = "";
+                        if (keytag->getAttributeByName("KEYFORMAT")) {
+                            keyFormat = keytag->getAttributeByName("KEYFORMAT")->quotedString();
                         }
 
-                        if (keytag->getAttributeByName("KEYFORMAT")) {
-                            encryption.keyFormat = keytag->getAttributeByName("KEYFORMAT")->quotedString();
+                        //TODO  判断WideVine,目前是否只有支持WideVine？
+                        if(keyFormat == ""
+                           || keyFormat == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed" /*WideVine*/) {
+                            encryption.method = SegmentEncryption::AES_SAMPLE;
+                            encryption.iv.clear();
+                            encryption.keyUrl = keytag->getAttributeByName("URI")->quotedString();
+
+                            if (keytag->getAttributeByName("IV")) {
+                                encryption.iv.clear();
+                                encryption.iv = keytag->getAttributeByName("IV")->hexSequence();
+                                encryption.ivStatic = true;
+                            }
+
+                            encryption.keyFormat = keyFormat;
                         }
                     } else {
                         /* unsupported or invalid */

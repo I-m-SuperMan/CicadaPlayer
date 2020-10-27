@@ -84,6 +84,7 @@ SuperMediaPlayer::~SuperMediaPlayer()
     // delete mPNotifier after mPMainThread, to avoid be using
     delete mPNotifier;
     mPNotifier = nullptr;
+    mDrmSessionManager = nullptr;
 }
 
 void SuperMediaPlayer::putMsg(PlayMsgType type, const MsgParam &param, bool trigger)
@@ -2955,7 +2956,35 @@ int SuperMediaPlayer::setUpAudioDecoder(const Stream_meta *meta)
         ProcessMuteMsg();
     }
 
-    mAudioDecoder = decoderFactory::create(meta->codec, DECFLAG_SW, 0);
+
+    bool forceHWdecoder  = false;
+    AF_LOGI("audio meta->keyFormat keyFormat = %s" , meta->keyFormat);
+
+    if(meta->keyFormat != nullptr) {
+
+#ifdef ANDROID
+        forceHWdecoder = (strcmp(meta->keyFormat, "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed") == 0);
+#endif
+
+        if(mDrmSessionManager == nullptr) {
+            mDrmSessionManager = std::unique_ptr<IDrmSessionManager>(IDrmSessionManager::create());
+        }
+
+        if (mDrmSessionManager != nullptr) {
+            mDrmSessionManager->setDrmRequestCallback(mRequestProvisionCb, mRequestKeyCb,
+                                                      mRequestUserData);
+        }
+
+    }
+
+    uint64_t flags = 0;
+    if(forceHWdecoder) {
+        flags = DECFLAG_HW;
+    } else {
+        flags = DECFLAG_SW;
+    }
+
+    mAudioDecoder = decoderFactory::create(meta->codec, flags, 0);
 
     if (mAudioDecoder == nullptr) {
         ret = gen_framework_errno(error_class_codec, codec_error_audio_not_support);
@@ -2963,6 +2992,7 @@ int SuperMediaPlayer::setUpAudioDecoder(const Stream_meta *meta)
         return ret;
     }
 
+    mAudioDecoder->setDrmSessionManager(mDrmSessionManager.get());
     ret = mAudioDecoder->open(meta, nullptr, 0);
 
     if (ret < 0) {
@@ -2991,6 +3021,16 @@ int SuperMediaPlayer::SetUpAudioPath()
         unique_ptr<streamMeta> pMeta{};
         mDemuxerService->GetStreamMeta(pMeta, mCurrentAudioIndex, false);
         Stream_meta *meta = (Stream_meta *) (pMeta.get());
+
+        if (mAudioPacket == nullptr) {
+            mAudioPacket = mBufferController->getPacket(BUFFER_TYPE_AUDIO);
+        }
+
+        auto *avAFPacket = dynamic_cast<AVAFPacket *>(mAudioPacket.get());
+        if(avAFPacket != nullptr) {
+            meta->isAdts = isADTS(avAFPacket->ToAVPacket()) ? 1 : 0;
+        }
+
         ret = setUpAudioDecoder(meta);
 
         if (ret < 0) {
@@ -3112,10 +3152,29 @@ int SuperMediaPlayer::SetUpVideoPath()
         }
     }
 
-    ret = CreateVideoDecoder(bHW, *meta);
+    bool forceHWdecoder  = false;
+    AF_LOGI("video meta->keyFormat keyFormat = %s" , meta->keyFormat);
+
+    if(meta->keyFormat != nullptr) {
+
+        if(mDrmSessionManager == nullptr) {
+            mDrmSessionManager = std::unique_ptr<IDrmSessionManager>(IDrmSessionManager::create());
+        }
+
+        if (mDrmSessionManager != nullptr) {
+            mDrmSessionManager->setDrmRequestCallback(mRequestProvisionCb, mRequestKeyCb,
+                                                      mRequestUserData);
+        }
+
+#ifdef ANDROID
+        forceHWdecoder = (strcmp(meta->keyFormat, "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed") == 0);
+#endif
+    }
+
+    ret = CreateVideoDecoder(bHW || forceHWdecoder, *meta);
 
     if (ret < 0) {
-        if (bHW) {
+        if(!forceHWdecoder && bHW) {
             ret = CreateVideoDecoder(false, *meta);
         }
     }
@@ -3247,6 +3306,7 @@ int SuperMediaPlayer::CreateVideoDecoder(bool bHW, Stream_meta &meta)
         ProcessVideoHoldMsg(mAppStatus == APP_BACKGROUND);
     }
     
+    mVideoDecoder->setDrmSessionManager(mDrmSessionManager.get());
     ret = mVideoDecoder->open(&meta, view, decFlag);
 
     if (ret < 0) {

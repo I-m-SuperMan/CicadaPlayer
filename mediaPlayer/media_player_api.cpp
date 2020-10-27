@@ -604,6 +604,14 @@ void CicadaSetDefaultBandWidth(playerHandle *pHandle, int bandWidth)
     }
 }
 
+void CicadaSetDrmRequestCallback(playerHandle *pHandle, drmRequestCb provisionCb , drmRequestCb keyCb , void* userData) {
+    GET_PLAYER;
+
+    if (player) {
+        player->setDrmRequestCallback(provisionCb, keyCb, userData);
+    }
+}
+
 int CicadaInvokeComponent(playerHandle *pHandle, const char *content)
 {
     GET_PLAYER;
