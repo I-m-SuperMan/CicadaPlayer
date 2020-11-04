@@ -29,7 +29,7 @@ namespace Cicada {
                    jbyteArray data);
 
         static void changeState(JNIEnv *env, jobject instance, jlong nativeIntance, jbyteArray data,
-                                jint state);
+                                jint state, jint errorCode);
 
     public:
 
@@ -44,16 +44,17 @@ namespace Cicada {
 
         void releaseDrmSession(void *sessionId, int dstSessionSize) override;
 
-        int getSessionState(void *sessionId, int sessionSize) override;
+        virtual void getSessionState(void* sessionId , int sessionSize , int* state, int* code)  override;
 
     public:
         class SessionState {
         public:
-            SessionState(void *sessionId, int sessionSize, int state) {
+            SessionState(void *sessionId, int sessionSize, int state , int errorCode ) {
                 mId = malloc(sessionSize);
                 memcpy(mId, sessionId, sessionSize);
                 mSize = sessionSize;
                 mState = state;
+                mErrorCode = errorCode;
             }
 
             ~SessionState() {
@@ -66,11 +67,12 @@ namespace Cicada {
             void *mId = nullptr;
             int mSize;
             int mState;
+            int mErrorCode;
         };
 
     private:
 
-        void changeStateInner(char *sessionId, int size, int state);
+        void changeStateInner(char *sessionId, int size, int state , int errorCode);
 
     private:
         jobject mDrmSessionManger = nullptr;

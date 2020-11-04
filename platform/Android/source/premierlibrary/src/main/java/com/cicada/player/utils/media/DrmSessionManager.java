@@ -3,6 +3,7 @@ package com.cicada.player.utils.media;
 import android.media.DeniedByServerException;
 import android.media.MediaDrm;
 import android.media.NotProvisionedException;
+import android.media.ResourceBusyException;
 import android.media.UnsupportedSchemeException;
 import android.os.Build;
 import android.os.Handler;
@@ -25,7 +26,7 @@ import static android.media.MediaDrm.EVENT_KEY_REQUIRED;
 import static android.media.MediaDrm.EVENT_PROVISION_REQUIRED;
 
 @NativeUsed
-@RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
+@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 public class DrmSessionManager {
 
     private static final String TAG = DrmSessionManager.class.getSimpleName();
@@ -41,10 +42,17 @@ public class DrmSessionManager {
 
     private List<DrmSession> drmSessionList = new ArrayList<>();
 
-    public static int SESSION_STATE_RELEASED = -1;
-    public static int SESSION_STATE_ERROR = -2;
-    public static int SESSION_STATE_IDLE = -3;
+    public static int SESSION_STATE_ERROR = -1;
+    public static int SESSION_STATE_IDLE = -2;
     public static int SESSION_STATE_OPENED = 0;
+
+    public static int ERROR_CODE_NONE = 0;
+    public static int ERROR_CODE_UNSUPPORT_SCHEME = 1;
+    public static int ERROR_CODE_RESOURCE_BUSY = 2;
+    public static int ERROR_CODE_KEY_RESPONSE_NULL = 3;
+    public static int ERROR_CODE_PROVISION_RESPONSE_NULL = 4;
+    public static int ERROR_CODE_DENIED_BY_SERVER = 5;
+    public static int ERROR_CODE_RELEASED = 6;
 
     private static class DrmInfo {
         public String licenseUrl = null;
@@ -114,16 +122,18 @@ public class DrmSessionManager {
         }
 
         public boolean prepare() {
-            try {
+//            try {
                 try {
                     if (WIDEVINE_FORMAT.equals(drmInfo.keyFormat)) {
                         mediaDrm = new MediaDrm(WIDEVINE_UUID);
                     } else {
                         Logger.e(TAG, " prepare fail : not support format :" + drmInfo.keyFormat);
+                        changeState(SESSION_STATE_ERROR , ERROR_CODE_UNSUPPORT_SCHEME);
                         return false;
                     }
                 } catch (UnsupportedSchemeException e) {
                     Logger.e(TAG, " prepare fail : " + e.getMessage());
+                    changeState(SESSION_STATE_ERROR , ERROR_CODE_UNSUPPORT_SCHEME);
                     return false;
                 }
 
@@ -137,16 +147,15 @@ public class DrmSessionManager {
 
                 try {
                     sessionId = mediaDrm.openSession();
-                    changeState(SESSION_STATE_IDLE);
+                    changeState(SESSION_STATE_IDLE , ERROR_CODE_NONE);
                     sendRequest(EVENT_KEY_REQUIRED, sessionId);
                 } catch (NotProvisionedException e) {
                     sendRequest(EVENT_PROVISION_REQUIRED, null);
+                } catch (ResourceBusyException e) {
+                    Logger.e(TAG, " prepare fail : " + e.getMessage());
+                    changeState(SESSION_STATE_ERROR , ERROR_CODE_RESOURCE_BUSY);
+                    return false;
                 }
-            } catch (Exception e) {
-                Logger.e(TAG, " prepare fail : " + e.getMessage());
-                changeState(SESSION_STATE_ERROR);
-                return false;
-            }
 
             return true;
         }
@@ -162,7 +171,7 @@ public class DrmSessionManager {
                 return false;
             }
 
-            changeState(SESSION_STATE_RELEASED);
+            changeState(SESSION_STATE_ERROR,ERROR_CODE_RELEASED);
 
             requestHandlerThread.quit();
 
@@ -187,15 +196,15 @@ public class DrmSessionManager {
 
                 if (requestData == null) {
                     Logger.e(TAG, "requestKey fail: data = null , url : " + keyRequest.getDefaultUrl());
-                    changeState( SESSION_STATE_ERROR);
+                    changeState( SESSION_STATE_ERROR , ERROR_CODE_KEY_RESPONSE_NULL);
                     return;
                 }
 
                 mediaDrm.provideKeyResponse(sessionId, requestData);
-                changeState( SESSION_STATE_OPENED);
+                changeState( SESSION_STATE_OPENED,ERROR_CODE_NONE);
             } catch (DeniedByServerException e) {
-                Logger.e(TAG, "requestKey fial: " + e.getMessage());
-                changeState( SESSION_STATE_ERROR);
+                Logger.e(TAG, "requestKey fail: " + e.getMessage());
+                changeState( SESSION_STATE_ERROR, ERROR_CODE_DENIED_BY_SERVER);
             }
         }
 
@@ -205,7 +214,7 @@ public class DrmSessionManager {
             byte[] provisionData = native_requestProvision(mNativeInstance, request.getDefaultUrl(), request.getData());
             if (provisionData == null) {
                 Logger.e(TAG, "requestProvision fail: data = null , url : " + request.getDefaultUrl());
-                changeState( SESSION_STATE_ERROR);
+                changeState( SESSION_STATE_ERROR , ERROR_CODE_PROVISION_RESPONSE_NULL);
                 return;
             }
 
@@ -214,7 +223,7 @@ public class DrmSessionManager {
                 sendRequest(EVENT_KEY_REQUIRED, sessionId);
             } catch (DeniedByServerException e) {
                 Logger.e(TAG, "requestProvision fail: " + e.getMessage());
-                changeState(SESSION_STATE_ERROR);
+                changeState(SESSION_STATE_ERROR , ERROR_CODE_DENIED_BY_SERVER);
                 return;
             }
 
@@ -225,11 +234,11 @@ public class DrmSessionManager {
             return sessionId;
         }
 
-        private void changeState(int state) {
+        private void changeState(int state , int errorCode ) {
             this.state = state;
             Logger.d(TAG, "changeState " + state);
             if(sessionId != null) {
-                native_changeState(mNativeInstance, sessionId, state);
+                native_changeState(mNativeInstance, sessionId, state, errorCode);
             }
         }
     }
@@ -285,5 +294,5 @@ public class DrmSessionManager {
 
     protected native byte[] native_requestKey(long nativeInstance, String url, byte[] data);
 
-    protected native void native_changeState(long nativeInstance, byte[] sessionId, int state);
+    protected native void native_changeState(long nativeInstance, byte[] sessionId, int state, int errorCode );
 }

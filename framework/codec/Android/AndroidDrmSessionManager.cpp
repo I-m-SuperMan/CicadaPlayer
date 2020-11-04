@@ -12,6 +12,10 @@
 #include "AndroidDrmSessionManager.h"
 #include "MediaCodec_Decoder.h"
 
+extern "C" {
+#include <utils/errors/framework_error.h>
+}
+
 using namespace Cicada;
 
 
@@ -23,7 +27,7 @@ static jmethodID jMediaDrmSession_releaseSession = nullptr;
 static JNINativeMethod mediaCodec_method_table[] = {
         {"native_requestProvision", "(JLjava/lang/String;[B)[B", (void *) AndroidDrmSessionManager::requestProvision},
         {"native_requestKey",       "(JLjava/lang/String;[B)[B", (void *) AndroidDrmSessionManager::requestKey},
-        {"native_changeState",      "(J[BI)V",                   (void *) AndroidDrmSessionManager::changeState},
+        {"native_changeState",      "(J[BII)V",                   (void *) AndroidDrmSessionManager::changeState},
 };
 
 int AndroidDrmSessionManager::registerMethod(JNIEnv *pEnv) {
@@ -144,19 +148,22 @@ void AndroidDrmSessionManager::releaseDrmSession(void *sessionId, int sessionSiz
     env->CallVoidMethod(mDrmSessionManger, jMediaDrmSession_releaseSession, jSessionId.getArray());
 }
 
-int AndroidDrmSessionManager::getSessionState(void *sessionId, int sessionSize) {
+void AndroidDrmSessionManager::getSessionState(void* sessionId , int sessionSize , int* state, int* code)  {
 
     std::unique_lock<std::mutex> lock(mStateMutex);
 
     if (!mSessionStates.empty()) {
         for (SessionState &sessionState : mSessionStates) {
             if (sessionState.mSize == sessionSize && memcmp(sessionState.mId, sessionId, sessionSize) == 0) {
-               return sessionState.mState;
+               *state=  sessionState.mState;
+               *code =  sessionState.mErrorCode;
+                return;
             }
         }
     }
 
-    return SESSION_STATE_ERROR;
+    *state = SESSION_STATE_ERROR;
+    *code = gen_framework_errno(error_class_drm,drm_error_unknow);
 }
 
 jbyteArray
@@ -233,7 +240,7 @@ AndroidDrmSessionManager::requestKey(JNIEnv *env, jobject instance, jlong native
 }
 
 void AndroidDrmSessionManager::changeState(JNIEnv *env, jobject instance, jlong nativeIntance,
-                                           jbyteArray data, jint state) {
+                                           jbyteArray data, jint state, jint errorCode) {
 
     auto *drmSessionManager = (AndroidDrmSessionManager *) (int64_t) nativeIntance;
     if (drmSessionManager == nullptr) {
@@ -250,31 +257,30 @@ void AndroidDrmSessionManager::changeState(JNIEnv *env, jobject instance, jlong 
     if (state == 0) {
         sessionState = SESSION_STATE_OPENED;
     } else if (state == -1) {
-        sessionState = SESSION_STATE_RELEASED;
-    } else if (state == -2) {
         sessionState = SESSION_STATE_ERROR;
-    } else if (state == -3) {
+    } else if (state == -2) {
         sessionState = SESSION_STATE_IDLE;
     }
 
-    drmSessionManager->changeStateInner(sessionId, sessionSize, sessionState);
+    drmSessionManager->changeStateInner(sessionId, sessionSize, sessionState , (int)errorCode);
 
     free(sessionId);
 }
 
-void AndroidDrmSessionManager::changeStateInner(char *sessionId, int sessionSize, int state) {
+void AndroidDrmSessionManager::changeStateInner(char *sessionId, int sessionSize, int state , int errorCode) {
 
     std::unique_lock<std::mutex> lock(mStateMutex);
     if (!mSessionStates.empty()) {
         for (SessionState &sessionState : mSessionStates) {
             if (sessionState.mSize == sessionSize && memcmp(sessionState.mId, sessionId, sessionSize) == 0) {
                 sessionState.mState = state;
+                sessionState.mErrorCode = gen_framework_errno(error_class_drm, errorCode);
                 return;
             }
         }
     }
 
-    SessionState sessionState(sessionId, sessionSize, state);
+    SessionState sessionState(sessionId, sessionSize, state , gen_framework_errno(error_class_drm, errorCode));
     mSessionStates.push_back(sessionState);
 
 }

@@ -3,13 +3,16 @@
 #include "mediaCodecDecoder.h"
 #include "MediaCodec_Decoder.h"
 #include <utils/frame_work_log.h>
-#include <utils/errors/framework_error.h>
 #include <utils/timer.h>
 #include <utils/Android/systemUtils.h>
 #include <cassert>
 #include <map>
 #include <utils/ffmpeg_utils.h>
 #include <utils/VideoExtraDataParser.h>
+
+extern "C" {
+#include <utils/errors/framework_error.h>
+}
 
 #define  MAX_INPUT_SIZE 4
 using namespace std;
@@ -161,17 +164,17 @@ namespace Cicada {
     }
 
     int mediaCodecDecoder::setSCD(const Stream_meta *meta) {
-        if(meta->extradata == nullptr){
+        if (meta->extradata == nullptr) {
             return -1;
         }
 
         if (meta->codec == AF_CODEC_ID_H264) {
-            VideoExtraDataParser parser(AV_CODEC_ID_H264 , meta->extradata, meta->extradata_size);
+            VideoExtraDataParser parser(AV_CODEC_ID_H264, meta->extradata, meta->extradata_size);
             int ret = parser.parser();
             if (ret >= 0) {
-                std::list< CodecSpecificData> csdList{};
+                std::list<CodecSpecificData> csdList{};
                 CodecSpecificData csd0{};
-                csd0.setScd("csd-0",parser.sps_data, parser.sps_data_size);
+                csd0.setScd("csd-0", parser.sps_data, parser.sps_data_size);
                 csdList.push_back(csd0);
                 CodecSpecificData csd1{};
                 csd1.setScd("csd-1", parser.pps_data, parser.sps_data_size);
@@ -248,18 +251,16 @@ namespace Cicada {
 
         if (mSecureBuffer && mDrmSessionManager != nullptr) {
 
-            int state = mDrmSessionManager->getSessionState(mDrmSessionId, mDrmSessionSize);
+            int state{};
+            int code{};
+            mDrmSessionManager->getSessionState(mDrmSessionId, mDrmSessionSize, &state, &code);
             if (state == SESSION_STATE_IDLE) {
                 AF_LOGD("drm not ready");
                 return -EAGAIN;
             } else if (state == SESSION_STATE_ERROR) {
-                //TODO 加新的错误码，错误描述
-                AF_LOGE("drm error");
-                return -ENOSPC;
-            } else if (state == SESSION_STATE_RELEASED) {
-                AF_LOGE("drm relesased");
-                return -ENOSPC;
-            }else if(state == SESSION_STATE_OPENED){
+                AF_LOGE("drm error : %s", framework_err2_string(code));
+                return code;
+            } else if (state == SESSION_STATE_OPENED) {
                 // drm has opened
             }
 
@@ -292,7 +293,7 @@ namespace Cicada {
                     mDiscardPTSSet.insert(pts);
                 }
             } else {
-                AF_LOGD("queue eos codecType = %d\n" , codecType);
+                AF_LOGD("queue eos codecType = %d\n", codecType);
             }
 
             if (mSecureBuffer) {
@@ -310,7 +311,7 @@ namespace Cicada {
             }
 
             if (ret < 0) {
-                AF_LOGE(" mDecoder->queue_in error codecType = %d\n" , codecType);
+                AF_LOGE(" mDecoder->queue_in error codecType = %d\n", codecType);
             }
 
             mInputFrameCount++;
@@ -418,12 +419,14 @@ namespace Cicada {
                 frameInfo.audio.sample_rate = sample_rate;
                 frameInfo.audio.channels = channel_count;
 
-                uint8_t* data[1] = {nullptr};
+                uint8_t *data[1] = {nullptr};
                 data[0] = const_cast<uint8_t *>(out.buf.p_ptr);
                 int lineSize[1] = {0};
                 lineSize[0] = out.buf.size;
 
-                pFrame = unique_ptr<AVAFFrame>(new AVAFFrame(frameInfo, (const uint8_t **)data, (const int*)lineSize, 1, IAFFrame::FrameTypeAudio));
+                pFrame = unique_ptr<AVAFFrame>(
+                        new AVAFFrame(frameInfo, (const uint8_t **) data, (const int *) lineSize, 1,
+                                      IAFFrame::FrameTypeAudio));
                 mDecoder->releaseOutputBuffer(index, false);
 
                 pFrame->getInfo().audio.sample_rate = sample_rate;

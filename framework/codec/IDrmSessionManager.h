@@ -8,9 +8,8 @@
 #include <string>
 #include <utils/AFMediaType.h>
 
-#define SESSION_STATE_RELEASED (-1)
-#define SESSION_STATE_ERROR (-2)
-#define SESSION_STATE_IDLE (-3)
+#define SESSION_STATE_ERROR (-1)
+#define SESSION_STATE_IDLE (-2)
 #define SESSION_STATE_OPENED (0)
 
 namespace Cicada {
@@ -38,7 +37,7 @@ namespace Cicada {
 
         virtual void releaseDrmSession(void *sessionId, int dstSessionSize) = 0;
 
-        virtual int getSessionState(void* sessionId , int sessionSize) = 0;
+        virtual void getSessionState(void* sessionId , int sessionSize , int* state, int* code) = 0;
 
     protected:
 
