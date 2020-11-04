@@ -292,7 +292,7 @@ namespace Cicada {
                     mDiscardPTSSet.insert(pts);
                 }
             } else {
-                AF_LOGD("queue eos\n");
+                AF_LOGD("queue eos codecType = %d\n" , codecType);
             }
 
             if (mSecureBuffer) {
@@ -310,7 +310,7 @@ namespace Cicada {
             }
 
             if (ret < 0) {
-                AF_LOGE(" mDecoder->queue_in error \n");
+                AF_LOGE(" mDecoder->queue_in error codecType = %d\n" , codecType);
             }
 
             mInputFrameCount++;
@@ -381,6 +381,10 @@ namespace Cicada {
                 return -EAGAIN;
             }
 
+            if (out.b_eos) {
+                return STATUS_EOS;
+            }
+
             // AF_LOGD("mediacodec out pts %" PRId64, out.buf.pts);
             if (codecType == CODEC_VIDEO) {
                 pFrame = unique_ptr<AFMediaCodecFrame>(
@@ -391,10 +395,6 @@ namespace Cicada {
                 pFrame->getInfo().video.width = mVideoWidth;
                 pFrame->getInfo().video.height = mVideoHeight;
             } else if (codecType == CODEC_AUDIO) {
-
-                if (out.b_eos) {
-                    return STATUS_EOS;
-                }
 
                 assert(out.buf.p_ptr != nullptr);
 

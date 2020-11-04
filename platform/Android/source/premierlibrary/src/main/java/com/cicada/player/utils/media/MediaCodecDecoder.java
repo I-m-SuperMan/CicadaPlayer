@@ -27,8 +27,8 @@ import static android.media.MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED;
 import static android.media.MediaCodec.INFO_OUTPUT_FORMAT_CHANGED;
 import static android.media.MediaCodec.INFO_TRY_AGAIN_LATER;
 
+@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 @NativeUsed
-@RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
 public class MediaCodecDecoder {
     private static final String TAG = MediaCodecDecoder.class.getSimpleName();
 
@@ -370,6 +370,8 @@ public class MediaCodecDecoder {
             return ERROR;
         }
 
+        inputBuffer.clear();
+
         if (buffer != null) {
             inputBuffer.put(buffer, 0, buffer.length);
             inputBuffer.flip();
@@ -384,14 +386,21 @@ public class MediaCodecDecoder {
         }
 
         try {
-            if (secure) {
+            if (secure && buffer != null) {
                 MediaCodec.CryptoInfo crypInfo = createCryptoInfo((EncryptionInfo) encryptionInfo);
                 mMediaCodec.queueSecureInputBuffer(index, 0, crypInfo, pts, flags);
             } else {
-                mMediaCodec.queueInputBuffer(index, 0, inputBuffer.limit(), pts, flags);
+                if ((flags & BUFFER_FLAG_END_OF_STREAM) == BUFFER_FLAG_END_OF_STREAM) {
+                    mMediaCodec.queueInputBuffer(index, 0, 0, 0, flags);
+                } else {
+                    mMediaCodec.queueInputBuffer(index, 0, inputBuffer.limit(), pts, flags);
+                }
             }
+        } catch (MediaCodec.CodecException e) {
+            Logger.e(TAG, "queueInputBufferInner  fail codecType : " + mCodecCateGory + " , msg : " + e.getLocalizedMessage());
+            return ERROR;
         } catch (Exception e) {
-            Logger.e(TAG, "queueInputBufferInner  fail " + e.getMessage());
+            Logger.e(TAG, "queueInputBufferInner  fail " + e.getLocalizedMessage());
             return ERROR;
         }
 
