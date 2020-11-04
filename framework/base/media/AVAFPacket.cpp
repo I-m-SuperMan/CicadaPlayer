@@ -162,6 +162,36 @@ bool AVAFPacket::getEncryptionInfo(IAFPacket::EncryptionInfo *dst)
     return true;
 }
 
+
+AVAFFrame::AVAFFrame(const IAFFrame::AFFrameInfo &info, const uint8_t **data, const int *lineSize, int lineNums, IAFFrame::FrameType type)
+    : mType(type)
+{
+    AVFrame *avFrame = av_frame_alloc();
+    if (type == FrameType::FrameTypeAudio) {
+        audioInfo aInfo = info.audio;
+        avFrame->channels = aInfo.channels;
+        avFrame->sample_rate = aInfo.sample_rate;
+        avFrame->format = aInfo.format;
+        int sampleSize = av_get_bytes_per_sample((enum AVSampleFormat)(avFrame->format));
+        avFrame->nb_samples = (int) (lineSize[0] / (avFrame->channels * sampleSize));
+    } else if (type == FrameType::FrameTypeVideo) {
+        videoInfo vInfo = info.video;
+        avFrame->width = vInfo.width;
+        avFrame->height = vInfo.height;
+        avFrame->format = vInfo.format;
+    }
+
+    av_frame_get_buffer(avFrame, 32);
+    av_frame_make_writable(avFrame);
+    for (int i = 0; i < lineNums; i++) {
+        uint8_t *frameSamples = avFrame->data[i];
+        memcpy(frameSamples, data[i], lineSize[i]);
+    }
+
+    mAvFrame = avFrame;
+    copyInfo();
+}
+
 AVAFFrame::AVAFFrame(AVFrame **frame, IAFFrame::FrameType type) : mType(type)
 {
     assert(*frame != nullptr);

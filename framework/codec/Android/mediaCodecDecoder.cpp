@@ -165,7 +165,6 @@ namespace Cicada {
             return -1;
         }
 
-        //TODO 直接塞extradata ，看看是否可以。
         if (meta->codec == AF_CODEC_ID_H264) {
             VideoExtraDataParser parser(AV_CODEC_ID_H264 , meta->extradata, meta->extradata_size);
             int ret = parser.parser();
@@ -414,22 +413,17 @@ namespace Cicada {
 
                 assert(afFormat != AFSampleFormat::AF_SAMPLE_FMT_NONE);
 
-                AVFrame *avFrame = av_frame_alloc();
-                avFrame->channels = channel_count;
-                avFrame->sample_rate = sample_rate;
-                avFrame->format = afFormat;
+                IAFFrame::AFFrameInfo frameInfo{};
+                frameInfo.audio.format = afFormat;
+                frameInfo.audio.sample_rate = sample_rate;
+                frameInfo.audio.channels = channel_count;
 
-                int64_t bufferSize = out.buf.size;
-                uint8_t *bufferPtr = const_cast<uint8_t *>(out.buf.p_ptr);
-                int sampleSize = av_get_bytes_per_sample((enum AVSampleFormat) (avFrame->format));
-                avFrame->nb_samples = (int) (bufferSize / (avFrame->channels * sampleSize));
+                uint8_t* data[1] = {nullptr};
+                data[0] = const_cast<uint8_t *>(out.buf.p_ptr);
+                int lineSize[1] = {0};
+                lineSize[0] = out.buf.size;
 
-                av_frame_get_buffer(avFrame, 0);
-                av_frame_make_writable(avFrame);
-                uint8_t *frameSamples = avFrame->data[0];
-                memcpy(frameSamples, bufferPtr, bufferSize);
-
-                pFrame = unique_ptr<AVAFFrame>(new AVAFFrame(&avFrame, IAFFrame::FrameTypeAudio));
+                pFrame = unique_ptr<AVAFFrame>(new AVAFFrame(frameInfo, (const uint8_t **)data, (const int*)lineSize, 1, IAFFrame::FrameTypeAudio));
                 mDecoder->releaseOutputBuffer(index, false);
 
                 pFrame->getInfo().audio.sample_rate = sample_rate;
