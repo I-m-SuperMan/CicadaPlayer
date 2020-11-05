@@ -2,9 +2,6 @@
 // Created by moqi on 2019-07-05.
 //
 
-extern "C" {
-#include <libavutil/encryption_info.h>
-}
 
 #include <utils/frame_work_log.h>
 #include <cassert>
@@ -65,6 +62,10 @@ AVAFPacket::AVAFPacket(AVPacket **pkt, bool isProtected) : mIsProtected(isProtec
 
 AVAFPacket::~AVAFPacket()
 {
+    if (mAVEncryptionInfo != nullptr) {
+        av_encryption_info_free(mAVEncryptionInfo);
+    }
+
     av_packet_free(&mpkt);
 }
 
@@ -103,48 +104,50 @@ AVAFPacket::operator AVPacket *()
 {
     return mpkt;
 }
+
 bool AVAFPacket::getEncryptionInfo(IAFPacket::EncryptionInfo *dst)
 {
-    int encryption_info_size;
-    const uint8_t *new_encryption_info = av_packet_get_side_data(mpkt,
-                                                                 AV_PKT_DATA_ENCRYPTION_INFO, &encryption_info_size);
+    if(mAVEncryptionInfo == nullptr) {
 
-    if (encryption_info_size <= 0 || new_encryption_info == nullptr) {
+        int encryption_info_size;
+        const uint8_t *new_encryption_info = av_packet_get_side_data(mpkt, AV_PKT_DATA_ENCRYPTION_INFO, &encryption_info_size);
+
+        if (encryption_info_size <= 0 || new_encryption_info == nullptr) {
+            return false;
+        }
+
+        mAVEncryptionInfo = av_encryption_info_get_side_data(new_encryption_info, encryption_info_size);
+    }
+
+    if (mAVEncryptionInfo == nullptr) {
         return false;
     }
 
-    AVEncryptionInfo *avEncryptionInfo = av_encryption_info_get_side_data(new_encryption_info, encryption_info_size);
-    if (avEncryptionInfo == nullptr) {
-        return false;
-    }
-
-    if (avEncryptionInfo->scheme == MKBETAG('c', 'e', 'n', 'c')) {
+    if (mAVEncryptionInfo->scheme == MKBETAG('c', 'e', 'n', 'c')) {
         dst->scheme = "cenc";
-    } else if (avEncryptionInfo->scheme == MKBETAG('c', 'e', 'n', 's')) {
+    } else if (mAVEncryptionInfo->scheme == MKBETAG('c', 'e', 'n', 's')) {
         dst->scheme = "cens";
-    } else if (avEncryptionInfo->scheme == MKBETAG('c', 'b', 'c', '1')) {
+    } else if (mAVEncryptionInfo->scheme == MKBETAG('c', 'b', 'c', '1')) {
         dst->scheme = "cbc1";
-    } else if (avEncryptionInfo->scheme == MKBETAG('c', 'b', 'c', 's')) {
+    } else if (mAVEncryptionInfo->scheme == MKBETAG('c', 'b', 'c', 's')) {
         dst->scheme = "cbcs";
     }
 
-    dst->crypt_byte_block = avEncryptionInfo->crypt_byte_block;
-    dst->skip_byte_block = avEncryptionInfo->skip_byte_block;
-    dst->subsample_count = avEncryptionInfo->subsample_count;
+    dst->crypt_byte_block = mAVEncryptionInfo->crypt_byte_block;
+    dst->skip_byte_block = mAVEncryptionInfo->skip_byte_block;
+    dst->subsample_count = mAVEncryptionInfo->subsample_count;
 
-    dst->key_id = (uint8_t *)malloc(avEncryptionInfo->key_id_size);
-    memcpy(dst->key_id, avEncryptionInfo->key_id, avEncryptionInfo->key_id_size);
-    dst->key_id_size = avEncryptionInfo->key_id_size;
+    dst->key_id = mAVEncryptionInfo->key_id;
+    dst->key_id_size = mAVEncryptionInfo->key_id_size;
 
-    dst->iv = (uint8_t *)malloc(avEncryptionInfo->iv_size);
-    memcpy(dst->iv, avEncryptionInfo->iv, avEncryptionInfo->iv_size);
-    dst->iv_size = avEncryptionInfo->iv_size;
+    dst->iv = mAVEncryptionInfo->iv;
+    dst->iv_size = mAVEncryptionInfo->iv_size;
 
-    if (avEncryptionInfo->subsample_count > 0) {
-        dst->subsample_count = avEncryptionInfo->subsample_count;
-        for(int i = 0; i < avEncryptionInfo->subsample_count; i++) {
+    if (mAVEncryptionInfo->subsample_count > 0) {
+        dst->subsample_count = mAVEncryptionInfo->subsample_count;
+        for(int i = 0; i < mAVEncryptionInfo->subsample_count; i++) {
             SubsampleEncryptionInfo subInfo{};
-            AVSubsampleEncryptionInfo &avSubsampleEncryptionInfo = avEncryptionInfo->subsamples[i];
+            AVSubsampleEncryptionInfo &avSubsampleEncryptionInfo = mAVEncryptionInfo->subsamples[i];
             subInfo.bytes_of_protected_data = avSubsampleEncryptionInfo.bytes_of_protected_data;
             subInfo.bytes_of_clear_data = static_cast<unsigned int>(getSize() - avSubsampleEncryptionInfo.bytes_of_protected_data);
             dst->subsamples.push_back(subInfo);
@@ -156,8 +159,6 @@ bool AVAFPacket::getEncryptionInfo(IAFPacket::EncryptionInfo *dst)
         subInfo.bytes_of_clear_data = 0;
         dst->subsamples.push_back(subInfo);
     }
-
-    av_encryption_info_free(avEncryptionInfo);
 
     return true;
 }

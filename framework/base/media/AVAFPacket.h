@@ -10,7 +10,8 @@
 
 extern "C" {
 #include <libavcodec/avcodec.h>
-};
+#include <libavutil/encryption_info.h>
+}
 
 #ifdef __APPLE__
 class PBAFFrame;
@@ -66,6 +67,7 @@ private:
     AVPacket *mpkt{nullptr};
     bool mIsProtected;
     std::string mMagicKey{};
+    AVEncryptionInfo *mAVEncryptionInfo{nullptr};
 
     void copyInfo();
 };

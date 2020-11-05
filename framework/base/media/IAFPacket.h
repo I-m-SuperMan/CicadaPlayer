@@ -73,14 +73,6 @@ public:
 
         ~EncryptionInfo()
         {
-            if (key_id != nullptr) {
-                free(key_id);
-            }
-
-            if (iv != nullptr) {
-                free(iv);
-            }
-
             if (!subsamples.empty()) {
                 subsamples.clear();
             }
