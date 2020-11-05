@@ -21,15 +21,15 @@
 using namespace Cicada;
 using namespace std;
 
-unique_ptr<Cicada::IDecoder> decoderFactory::create(AFCodecID codec, uint64_t flags, int maxSize)
+unique_ptr<Cicada::IDecoder> decoderFactory::create(const Stream_meta& meta, uint64_t flags, int maxSize)
 {
-    IDecoder *decoder = codecPrototype::create(codec, flags, maxSize);
+    IDecoder *decoder = codecPrototype::create(meta, flags, maxSize);
 
     if (decoder != nullptr) {
         return unique_ptr<IDecoder>(decoder);
     }
 
-    return createBuildIn(codec, flags);
+    return createBuildIn(meta.codec, flags);
 }
 
 unique_ptr<IDecoder> decoderFactory::createBuildIn(const AFCodecID &codec, uint64_t flags)

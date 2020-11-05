@@ -45,7 +45,7 @@ namespace Cicada{
         };
 
     private:
-        static bool checkSupport(AFCodecID codec, uint64_t flags, int maxSize);
+        static bool checkSupport(const Stream_meta &meta, uint64_t flags, int maxSize);
 
         int setSCD(const Stream_meta *meta);
 
@@ -62,10 +62,10 @@ namespace Cicada{
             return new mediaCodecDecoder();
         };
 
-        bool is_supported(AFCodecID codec, uint64_t flags, int maxSize) override
+        bool is_supported(const Stream_meta &meta, uint64_t flags, int maxSize) override
         {
             if (flags & DECFLAG_HW)
-                return checkSupport(codec, flags, maxSize);
+                return checkSupport(meta, flags, maxSize);
             return false;
         };
         static mediaCodecDecoder se;
@@ -80,10 +80,6 @@ namespace Cicada{
 
         int codecType = CODEC_VIDEO;
 
-
-        void *mDrmSessionId = nullptr;
-        int mDrmSessionSize = 0;
-        bool mSecureBuffer = false;
         MediaCodec_Decoder *mDecoder{nullptr};
 
         std::recursive_mutex mFuncEntryMutex;

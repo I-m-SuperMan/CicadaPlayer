@@ -15,7 +15,7 @@ void codecPrototype::addPrototype(codecPrototype *se)
     //  AF_LOGD("codecQueue size is %d\n",codecQueue.size());
 }
 
-Cicada::IDecoder *codecPrototype::create(AFCodecID code, uint64_t flags, int maxSize)
+Cicada::IDecoder *codecPrototype::create(const Stream_meta &meta, uint64_t flags, int maxSize)
 {
     bool bHW = static_cast<bool>(flags & DECFLAG_HW);
 
@@ -24,14 +24,14 @@ Cicada::IDecoder *codecPrototype::create(AFCodecID code, uint64_t flags, int max
         decFlags &= ~DECFLAG_SW;
 
         for (int i = 0; i < _nextSlot; ++i) {
-            if (codecQueue[i]->is_supported(code, decFlags, maxSize)) {
+            if (codecQueue[i]->is_supported(meta, decFlags, maxSize)) {
                 return codecQueue[i]->clone();
             }
         }
     }
 
     for (int i = 0; i < _nextSlot; ++i) {
-        if (codecQueue[i]->is_supported(code, flags, maxSize)) {
+        if (codecQueue[i]->is_supported(meta, flags, maxSize)) {
             return codecQueue[i]->clone();
         }
     }

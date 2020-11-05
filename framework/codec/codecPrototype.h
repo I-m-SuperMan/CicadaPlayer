@@ -16,11 +16,11 @@ public:
 
     virtual Cicada::IDecoder *clone() = 0;
 
-    virtual bool is_supported(AFCodecID code, uint64_t flags, int maxSize) = 0;
+    virtual bool is_supported(const Stream_meta &meta, uint64_t flags, int maxSize) = 0;
 
     static void addPrototype(codecPrototype *se);
 
-    static Cicada::IDecoder *create(AFCodecID code, uint64_t flags, int maxSize);
+    static Cicada::IDecoder *create(const Stream_meta &meta, uint64_t flags, int maxSize);
 };
 
 

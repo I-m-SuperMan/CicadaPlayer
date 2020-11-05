@@ -68,10 +68,10 @@ namespace Cicada{
             return new avcodecDecoder();
         };
 
-        bool is_supported(AFCodecID codec, uint64_t flags, int maxSize) override
+        bool is_supported(const Stream_meta& meta, uint64_t flags, int maxSize) override
         {
             if (flags & DECFLAG_SW)
-                return is_supported(codec);
+                return is_supported(meta.codec);
             return false;
         };
         static avcodecDecoder se;

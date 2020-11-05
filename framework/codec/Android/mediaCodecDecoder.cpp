@@ -39,15 +39,18 @@ namespace Cicada {
     mediaCodecDecoder::~mediaCodecDecoder() {
         lock_guard<recursive_mutex> func_entry_lock(mFuncEntryMutex);
         delete mDecoder;
-
-        if (mDrmSessionId != nullptr) {
-            free(mDrmSessionId);
-        }
     }
 
-    bool mediaCodecDecoder::checkSupport(AFCodecID codec, uint64_t flags, int maxSize) {
+    bool mediaCodecDecoder::checkSupport(const Stream_meta &meta, uint64_t flags, int maxSize) {
+        AFCodecID codec = meta.codec;
         if (codec != AF_CODEC_ID_H264 && codec != AF_CODEC_ID_HEVC
             && codec != AF_CODEC_ID_AAC) {
+            return false;
+        }
+
+        if (meta.keyFormat != nullptr
+            && (strcmp(meta.keyFormat, "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed") != 0)) {
+            //has keyformat but not widevine
             return false;
         }
 
@@ -78,7 +81,7 @@ namespace Cicada {
             return -ENOSPC;
         }
 
-        if (!checkSupport(meta->codec, flags, max(meta->height, meta->width))) {
+        if (!checkSupport(*meta, flags, max(meta->height, meta->width))) {
             return -ENOSPC;
         }
 
@@ -108,19 +111,16 @@ namespace Cicada {
 
         if (meta->keyUrl != nullptr && meta->keyFormat != nullptr
             && (strcmp(meta->keyFormat, "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed") == 0)) {
-            mSecureBuffer = true;
-            mDrmSessionSize = 0;
-            if (mDrmSessionId != nullptr) {
-                free(mDrmSessionId);
-            }
 
             if (mDrmSessionManager != nullptr) {
-                ret = mDrmSessionManager->requireDrmSession(&mDrmSessionId, &mDrmSessionSize,
-                                                            meta->keyUrl,
-                                                            meta->keyFormat, mime, "");
-                if (mDrmSessionId != nullptr) {
+                int drmSessionSize = 0;
+                void *drmSessionId = mDrmSessionManager->getSession(&drmSessionSize);
+                if (drmSessionId != nullptr) {
                     ret = mDecoder->setDrmInfo("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed",
-                                               mDrmSessionId, mDrmSessionSize);
+                                               drmSessionId, drmSessionSize);
+                } else {
+                    //drm session not be create.
+                    ret = -1;
                 }
             }
 
@@ -242,18 +242,17 @@ namespace Cicada {
             mDecoder->release();
         }
 
-        if (mDrmSessionManager != nullptr && mDrmSessionId != nullptr) {
-            mDrmSessionManager->releaseDrmSession(mDrmSessionId, mDrmSessionSize);
+        if (mDrmSessionManager != nullptr) {
+            mDrmSessionManager->releaseDrmSession();
         }
     }
 
     int mediaCodecDecoder::enqueue_decoder(unique_ptr<IAFPacket> &pPacket) {
 
-        if (mSecureBuffer && mDrmSessionManager != nullptr) {
-
+        if (mDrmSessionManager != nullptr) {
             int state{};
             int code{};
-            mDrmSessionManager->getSessionState(mDrmSessionId, mDrmSessionSize, &state, &code);
+            mDrmSessionManager->getSessionState(&state, &code);
             if (state == SESSION_STATE_IDLE) {
                 AF_LOGD("drm not ready");
                 return -EAGAIN;
@@ -296,7 +295,7 @@ namespace Cicada {
                 AF_LOGD("queue eos codecType = %d\n", codecType);
             }
 
-            if (mSecureBuffer) {
+            if (mDrmSessionManager != nullptr) {
                 IAFPacket::EncryptionInfo encryptionInfo{};
                 if (pPacket != nullptr) {
                     pPacket->getEncryptionInfo(&encryptionInfo);

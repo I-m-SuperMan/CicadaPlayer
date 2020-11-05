@@ -28,7 +28,7 @@ namespace Cicada {
         requestKey(JNIEnv *env, jobject instance, jlong nativeIntance, jstring url,
                    jbyteArray data);
 
-        static void changeState(JNIEnv *env, jobject instance, jlong nativeIntance, jbyteArray data,
+        static void changeState(JNIEnv *env, jobject instance, jlong nativeIntance,
                                 jint state, jint errorCode);
 
     public:
@@ -38,47 +38,29 @@ namespace Cicada {
         ~AndroidDrmSessionManager();
 
         int
-        requireDrmSession(void **dstSessionId, int *dstSessionSize, const std::string &keyUrl,
+        requireDrmSession(const std::string &keyUrl,
                           const std::string &keyFormat, const std::string &mime,
                           const std::string &licenseUrl) override;
 
-        void releaseDrmSession(void *sessionId, int dstSessionSize) override;
+        void releaseDrmSession() override;
 
-        virtual void getSessionState(void* sessionId , int sessionSize , int* state, int* code)  override;
+         void getSessionState(  int* state, int* code)  override;
 
-    public:
-        class SessionState {
-        public:
-            SessionState(void *sessionId, int sessionSize, int state , int errorCode ) {
-                mId = malloc(sessionSize);
-                memcpy(mId, sessionId, sessionSize);
-                mSize = sessionSize;
-                mState = state;
-                mErrorCode = errorCode;
-            }
-
-            ~SessionState() {
-                if (mId != nullptr) {
-                    free(mId);
-                }
-            }
-
-        public:
-            void *mId = nullptr;
-            int mSize;
-            int mState;
-            int mErrorCode;
-        };
+         void* getSession(int *sessionSize) override ;
 
     private:
 
-        void changeStateInner(char *sessionId, int size, int state , int errorCode);
+        void changeStateInner( int state , int errorCode);
 
     private:
-        jobject mDrmSessionManger = nullptr;
+        jobject mJDrmSessionManger = nullptr;
 
         std::mutex mStateMutex{};
-        std::list<SessionState> mSessionStates{};
+
+        void *mSessionId = nullptr;
+        int mSize;
+        int mState;
+        int mErrorCode;
 
     };
 

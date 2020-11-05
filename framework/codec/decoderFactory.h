@@ -11,7 +11,7 @@
 class decoderFactory {
 
 public:
-    static std::unique_ptr<Cicada::IDecoder> create(AFCodecID codec, uint64_t flags, int maxSize);
+    static std::unique_ptr<Cicada::IDecoder> create(const Stream_meta & meta, uint64_t flags, int maxSize);
 
 private:
 

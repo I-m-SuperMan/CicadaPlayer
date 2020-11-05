@@ -31,13 +31,15 @@ namespace Cicada {
         }
 
         virtual int
-        requireDrmSession(void **dstSessionId, int *dstSessionSize, const std::string &keyUrl,
+        requireDrmSession(const std::string &keyUrl,
                           const std::string &keyFormat, const std::string &mime,
                           const std::string &licenseUrl) = 0;
 
-        virtual void releaseDrmSession(void *sessionId, int dstSessionSize) = 0;
+        virtual void releaseDrmSession() = 0;
 
-        virtual void getSessionState(void* sessionId , int sessionSize , int* state, int* code) = 0;
+        virtual void getSessionState( int* state, int* code) = 0;
+
+        virtual void* getSession(int *sessionSize) = 0;
 
     protected:
 

@@ -76,6 +76,7 @@ public class DrmSessionManager {
             if (!areEqual(keyFormat, info.keyFormat)) {
                 return false;
             }
+
             return true;
         }
 
@@ -122,40 +123,39 @@ public class DrmSessionManager {
         }
 
         public boolean prepare() {
-//            try {
-                try {
-                    if (WIDEVINE_FORMAT.equals(drmInfo.keyFormat)) {
-                        mediaDrm = new MediaDrm(WIDEVINE_UUID);
-                    } else {
-                        Logger.e(TAG, " prepare fail : not support format :" + drmInfo.keyFormat);
-                        changeState(SESSION_STATE_ERROR , ERROR_CODE_UNSUPPORT_SCHEME);
-                        return false;
-                    }
-                } catch (UnsupportedSchemeException e) {
-                    Logger.e(TAG, " prepare fail : " + e.getMessage());
-                    changeState(SESSION_STATE_ERROR , ERROR_CODE_UNSUPPORT_SCHEME);
+            try {
+                if (WIDEVINE_FORMAT.equals(drmInfo.keyFormat)) {
+                    mediaDrm = new MediaDrm(WIDEVINE_UUID);
+                } else {
+                    Logger.e(TAG, " prepare fail : not support format :" + drmInfo.keyFormat);
+                    changeState(SESSION_STATE_ERROR, ERROR_CODE_UNSUPPORT_SCHEME);
                     return false;
                 }
+            } catch (UnsupportedSchemeException e) {
+                Logger.e(TAG, " prepare fail : " + e.getMessage());
+                changeState(SESSION_STATE_ERROR, ERROR_CODE_UNSUPPORT_SCHEME);
+                return false;
+            }
 
-                mediaDrm.setOnEventListener(new MediaDrm.OnEventListener() {
-                    @Override
-                    public void onEvent(@NonNull MediaDrm md, @Nullable byte[] sessionId, int event, int extra, @Nullable byte[] data) {
-                        Logger.d(TAG, " drm Event = " + event + " , extra = " + extra);
-                        sendRequest(event, sessionId);
-                    }
-                });
-
-                try {
-                    sessionId = mediaDrm.openSession();
-                    changeState(SESSION_STATE_IDLE , ERROR_CODE_NONE);
-                    sendRequest(EVENT_KEY_REQUIRED, sessionId);
-                } catch (NotProvisionedException e) {
-                    sendRequest(EVENT_PROVISION_REQUIRED, null);
-                } catch (ResourceBusyException e) {
-                    Logger.e(TAG, " prepare fail : " + e.getMessage());
-                    changeState(SESSION_STATE_ERROR , ERROR_CODE_RESOURCE_BUSY);
-                    return false;
+            mediaDrm.setOnEventListener(new MediaDrm.OnEventListener() {
+                @Override
+                public void onEvent(@NonNull MediaDrm md, @Nullable byte[] sessionId, int event, int extra, @Nullable byte[] data) {
+                    Logger.d(TAG, " drm Event = " + event + " , extra = " + extra);
+                    sendRequest(event, sessionId);
                 }
+            });
+
+            try {
+                sessionId = mediaDrm.openSession();
+                changeState(SESSION_STATE_IDLE, ERROR_CODE_NONE);
+                sendRequest(EVENT_KEY_REQUIRED, sessionId);
+            } catch (NotProvisionedException e) {
+                sendRequest(EVENT_PROVISION_REQUIRED, null);
+            } catch (ResourceBusyException e) {
+                Logger.e(TAG, " prepare fail : " + e.getMessage());
+                changeState(SESSION_STATE_ERROR, ERROR_CODE_RESOURCE_BUSY);
+                return false;
+            }
 
             return true;
         }
@@ -171,7 +171,7 @@ public class DrmSessionManager {
                 return false;
             }
 
-            changeState(SESSION_STATE_ERROR,ERROR_CODE_RELEASED);
+            changeState(SESSION_STATE_ERROR, ERROR_CODE_RELEASED);
 
             requestHandlerThread.quit();
 
@@ -196,15 +196,15 @@ public class DrmSessionManager {
 
                 if (requestData == null) {
                     Logger.e(TAG, "requestKey fail: data = null , url : " + keyRequest.getDefaultUrl());
-                    changeState( SESSION_STATE_ERROR , ERROR_CODE_KEY_RESPONSE_NULL);
+                    changeState(SESSION_STATE_ERROR, ERROR_CODE_KEY_RESPONSE_NULL);
                     return;
                 }
 
                 mediaDrm.provideKeyResponse(sessionId, requestData);
-                changeState( SESSION_STATE_OPENED,ERROR_CODE_NONE);
+                changeState(SESSION_STATE_OPENED, ERROR_CODE_NONE);
             } catch (DeniedByServerException e) {
                 Logger.e(TAG, "requestKey fail: " + e.getMessage());
-                changeState( SESSION_STATE_ERROR, ERROR_CODE_DENIED_BY_SERVER);
+                changeState(SESSION_STATE_ERROR, ERROR_CODE_DENIED_BY_SERVER);
             }
         }
 
@@ -214,7 +214,7 @@ public class DrmSessionManager {
             byte[] provisionData = native_requestProvision(mNativeInstance, request.getDefaultUrl(), request.getData());
             if (provisionData == null) {
                 Logger.e(TAG, "requestProvision fail: data = null , url : " + request.getDefaultUrl());
-                changeState( SESSION_STATE_ERROR , ERROR_CODE_PROVISION_RESPONSE_NULL);
+                changeState(SESSION_STATE_ERROR, ERROR_CODE_PROVISION_RESPONSE_NULL);
                 return;
             }
 
@@ -223,7 +223,7 @@ public class DrmSessionManager {
                 sendRequest(EVENT_KEY_REQUIRED, sessionId);
             } catch (DeniedByServerException e) {
                 Logger.e(TAG, "requestProvision fail: " + e.getMessage());
-                changeState(SESSION_STATE_ERROR , ERROR_CODE_DENIED_BY_SERVER);
+                changeState(SESSION_STATE_ERROR, ERROR_CODE_DENIED_BY_SERVER);
                 return;
             }
 
@@ -234,11 +234,11 @@ public class DrmSessionManager {
             return sessionId;
         }
 
-        private void changeState(int state , int errorCode ) {
+        private void changeState(int state, int errorCode) {
             this.state = state;
             Logger.d(TAG, "changeState " + state);
-            if(sessionId != null) {
-                native_changeState(mNativeInstance, sessionId, state, errorCode);
+            if (sessionId != null) {
+                native_changeState(mNativeInstance, state, errorCode);
             }
         }
     }
@@ -294,5 +294,5 @@ public class DrmSessionManager {
 
     protected native byte[] native_requestKey(long nativeInstance, String url, byte[] data);
 
-    protected native void native_changeState(long nativeInstance, byte[] sessionId, int state, int errorCode );
+    protected native void native_changeState(long nativeInstance, int state, int errorCode);
 }
