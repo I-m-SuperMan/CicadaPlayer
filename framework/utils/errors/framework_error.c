@@ -76,8 +76,10 @@ const char *drm_err2_string(uint8_t Errno)
             return "unsupport scheme";
         case drm_error_released:
             return "drm released";
+        case drm_error_provision_fail:
+            return "drm provision fail";
         case drm_error_unknow:
-            return "unknow error";
+            return "unknow drm error";
         default:
             return "Unknown drm error";
     }

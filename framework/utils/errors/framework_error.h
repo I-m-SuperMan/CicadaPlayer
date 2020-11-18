@@ -60,6 +60,7 @@ enum drm_error {
     drm_error_provision_response_null,
     drm_error_denied_by_server,
     drm_error_released,
+    drm_error_provision_fail,
 
     drm_error_unknow = 99,
 };

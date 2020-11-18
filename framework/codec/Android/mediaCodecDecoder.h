@@ -51,6 +51,10 @@ namespace Cicada{
 
         void releaseDecoder();
 
+        int configDecoder();
+        
+        int mayInitCodec();
+
     private:
         explicit mediaCodecDecoder(int dummy)
         {
@@ -79,6 +83,7 @@ namespace Cicada{
         int format{0};
 
         int codecType = CODEC_VIDEO;
+        std::string mMime{};
 
         MediaCodec_Decoder *mDecoder{nullptr};
 
@@ -98,6 +103,15 @@ namespace Cicada{
 
         std::set<int64_t> mDiscardPTSSet;
 
+        std::string mDrmUrl{};
+        std::string mDrmFormat{};
+
+        int mMetaVideoWidth{0};
+        int mMetaVideoHeight{0};
+        void* mVideoOutObser = nullptr;
+        int mMetaAudioSampleRate{0};
+        int mMetaAudioChannels{0};
+        int mMetaAudioIsADTS{0};
     };
 }
 

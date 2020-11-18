@@ -89,78 +89,46 @@ namespace Cicada {
             mFlags |= DECFLAG_OUT;
         }
 
-        const char *mime;
         if (meta->codec == AF_CODEC_ID_H264) {
             codecType = CODEC_VIDEO;
-            mime = "video/avc";
+            mMime = "video/avc";
         } else if (meta->codec == AF_CODEC_ID_HEVC) {
             codecType = CODEC_VIDEO;
-            mime = "video/hevc";
+            mMime = "video/hevc";
         } else if (meta->codec == AF_CODEC_ID_AAC) {
             codecType = CODEC_AUDIO;
-            mime = "audio/mp4a-latm";
+            mMime = "audio/mp4a-latm";
         } else {
             AF_LOGE("codec is %d, not support", meta->codec);
             return -ENOSPC;
         }
 
 
+        mDrmUrl = (meta->keyUrl == nullptr ? "" : meta->keyUrl);
+        mDrmFormat = (meta->keyFormat == nullptr ? "" : meta->keyFormat);
+
+        if (codecType == CODEC_VIDEO) {
+            mMetaVideoWidth = meta->width;
+            mMetaVideoHeight = meta->height;
+            mVideoOutObser = voutObsr;
+        } else if (codecType == CODEC_AUDIO) {
+            mMetaAudioSampleRate = meta->samplerate;
+            mMetaAudioChannels = meta->channels;
+            mMetaAudioIsADTS = meta->isAdts;
+        }
+
+
         lock_guard<recursive_mutex> func_entry_lock(mFuncEntryMutex);
 
-        int ret = -1;
+        setSCD(meta);
 
         if (meta->keyUrl != nullptr && meta->keyFormat != nullptr
             && (strcmp(meta->keyFormat, "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed") == 0)) {
-
-            if (mDrmSessionManager != nullptr) {
-                int drmSessionSize = 0;
-                void *drmSessionId = mDrmSessionManager->getSession(&drmSessionSize);
-                if (drmSessionId != nullptr) {
-                    ret = mDecoder->setDrmInfo("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed",
-                                               drmSessionId, drmSessionSize);
-                } else {
-                    //drm session not be create.
-                    ret = -1;
-                }
-            }
-
-            if (ret < 0) {
-                AF_LOGE("failed to config mDecoder drm info %d", ret);
-                releaseDecoder();
-                ret = gen_framework_errno(error_class_codec, codec_error_video_device_error);
-                return ret;
-            }
+            //check drm status and init decoder at enqueueDecoder
+            return 0;
         }
 
-        //TODO 加密流 保持原样，不加密流，都mergehead
-        //TODO 找腾云生成测试流
-        ret = setSCD(meta);//TODO 多码率切换。。 ts 0001/
-        if (codecType == CODEC_VIDEO) {
-            ret = mDecoder->configureVideo(mime, meta->width, meta->height, 0,
-                                           static_cast<jobject>(voutObsr));
-        } else if (codecType == CODEC_AUDIO) {
-            ret = mDecoder->configureAudio(mime, meta->samplerate, meta->channels, meta->isAdts);
-        }
-
-        if (ret >= 0) {
-            ret = 0;
-        } else {
-            AF_LOGE("failed to config mDecoder rv %d", ret);
-            releaseDecoder();
-            ret = gen_framework_errno(error_class_codec, codec_error_video_device_error);
-        }
-
-        if (ret == 0) {
-            if (mDecoder->start() == MC_ERROR) {
-                AF_LOGE("mediacodec start failed.");
-                return gen_framework_errno(error_class_codec, codec_error_video_device_error);
-            }
-
-            mbInit = true;
-            mFlushState = 1;
-        }
-
-        return ret;
+        return configDecoder();
     }
 
     int mediaCodecDecoder::setSCD(const Stream_meta *meta) {
@@ -261,6 +229,12 @@ namespace Cicada {
                 return code;
             } else if (state == SESSION_STATE_OPENED) {
                 // drm has opened
+                if (!mbInit) {
+                    int ret = mayInitCodec();
+                    if (ret < 0) {
+                        return ret;
+                    }
+                }
             }
 
         }
@@ -440,5 +414,63 @@ namespace Cicada {
             AF_LOGE("unknown error %d\n", index);
             return index;
         }
+    }
+
+    int mediaCodecDecoder::mayInitCodec() {
+        int ret = -1;
+
+        //config drm info
+        if (!mDrmUrl.empty() && !mDrmFormat.empty()
+            && mDrmFormat ==  "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed") {
+
+            if (mDrmSessionManager != nullptr) {
+                int drmSessionSize = 0;
+                void *drmSessionId = mDrmSessionManager->getSession(&drmSessionSize);
+                assert(drmSessionId != nullptr);
+                ret = mDecoder->setDrmInfo("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed",
+                                           drmSessionId, drmSessionSize);
+            }
+
+            if (ret < 0) {
+                AF_LOGE("failed to config mDecoder drm info %d", ret);
+                releaseDecoder();
+                ret = gen_framework_errno(error_class_codec, codec_error_video_device_error);
+                return ret;
+            }
+        }
+
+        return configDecoder();
+    }
+
+
+    int mediaCodecDecoder::configDecoder() {
+
+        int ret = -1;
+        if (codecType == CODEC_VIDEO) {
+            ret = mDecoder->configureVideo(mMime, mMetaVideoHeight, mMetaVideoHeight, 0,
+                                           static_cast<jobject>(mVideoOutObser));
+        } else if (codecType == CODEC_AUDIO) {
+            ret = mDecoder->configureAudio(mMime, mMetaAudioSampleRate, mMetaAudioChannels, mMetaAudioIsADTS);
+        }
+
+        if (ret >= 0) {
+            ret = 0;
+        } else {
+            AF_LOGE("failed to config mDecoder rv %d", ret);
+            releaseDecoder();
+            ret = gen_framework_errno(error_class_codec, codec_error_video_device_error);
+        }
+
+        if (ret == 0) {
+            if (mDecoder->start() == MC_ERROR) {
+                AF_LOGE("mediacodec start failed.");
+                return gen_framework_errno(error_class_codec, codec_error_video_device_error);
+            }
+
+            mbInit = true;
+            mFlushState = 1;
+        }
+
+        return ret;
     }
 }

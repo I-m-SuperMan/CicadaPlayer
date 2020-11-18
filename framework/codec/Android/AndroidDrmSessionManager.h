@@ -58,9 +58,9 @@ namespace Cicada {
         std::mutex mStateMutex{};
 
         void *mSessionId = nullptr;
-        int mSize;
-        int mState;
-        int mErrorCode;
+        int mSize{0};
+        int mState{SESSION_STATE_IDLE};
+        int mErrorCode{0};
 
     };
 
