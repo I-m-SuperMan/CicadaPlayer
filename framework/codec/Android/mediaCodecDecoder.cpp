@@ -125,11 +125,40 @@ namespace Cicada {
     }
 
     int mediaCodecDecoder::setSCD(const Stream_meta *meta) {
-        if (meta->extradata == nullptr) {
-            return -1;
-        }
+        if (meta->codec == AF_CODEC_ID_HEVC) {
 
-        if (meta->codec == AF_CODEC_ID_H264) {
+            if (meta->extradata == nullptr || meta->extradata_size == 0) {
+                return -1;
+            }
+
+            VideoExtraDataParser parser(AV_CODEC_ID_HEVC, meta->extradata, meta->extradata_size);
+            int ret = parser.parser();
+            if (ret >= 0) {
+                std::list<CodecSpecificData> csdList{};
+                CodecSpecificData csd0{};
+
+                const int data_size = parser.vps_data_size + parser.sps_data_size + parser.pps_data_size;
+                char data[data_size];
+
+                memcpy(data, parser.vps_data, parser.vps_data_size);
+                memcpy(data + parser.vps_data_size, parser.sps_data, parser.sps_data_size);
+                memcpy(data + parser.vps_data_size + parser.sps_data_size, parser.pps_data,
+                       parser.pps_data_size);
+
+                csd0.setScd("csd-0", data, data_size);
+                csdList.push_back(csd0);
+                mDecoder->setCodecSpecificData(csdList);
+
+                csdList.clear();
+            }
+
+            return ret;
+        } else if (meta->codec == AF_CODEC_ID_H264) {
+
+            if (meta->extradata == nullptr || meta->extradata_size == 0) {
+                return -1;
+            }
+
             VideoExtraDataParser parser(AV_CODEC_ID_H264, meta->extradata, meta->extradata_size);
             int ret = parser.parser();
             if (ret >= 0) {
@@ -147,13 +176,48 @@ namespace Cicada {
 
             return ret;
         } else if (meta->codec == AF_CODEC_ID_AAC) {
-            std::list<CodecSpecificData> csdList{};
-            CodecSpecificData csd0{};
-            csd0.setScd("csd-0", meta->extradata, meta->extradata_size);
-            csdList.push_back(csd0);
-            mDecoder->setCodecSpecificData(csdList);
+            if (meta->extradata == nullptr || meta->extradata_size == 0) {
+                //ADTS, has no extra data . MediaCodec MUST set csd when decode aac
 
-            csdList.clear();
+                int samplingFreq[] = {
+                        96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050,
+                        16000, 12000, 11025, 8000
+                };
+
+                // Search the Sampling Frequencies
+                int sampleIndex = -1;
+                for (int i = 0; i < 12; ++i) {
+                    if (samplingFreq[i] == mMetaAudioSampleRate) {
+                        sampleIndex = i;
+                        break;
+                    }
+                }
+                if (sampleIndex < 0) {
+                    return -1;
+                }
+
+
+                const size_t kCsdLength = 2;
+                char csd[kCsdLength];
+                csd[0] = (meta->profile + 1) << 3 | sampleIndex >> 1;
+                csd[1] = (sampleIndex & 0x01) << 7 | meta->channels << 3;
+
+                std::list<CodecSpecificData> csdList{};
+                CodecSpecificData csd0{};
+                csd0.setScd("csd-0", csd, kCsdLength);
+                csdList.push_back(csd0);
+                mDecoder->setCodecSpecificData(csdList);
+
+                csdList.clear();
+            } else {
+                std::list<CodecSpecificData> csdList{};
+                CodecSpecificData csd0{};
+                csd0.setScd("csd-0", meta->extradata, meta->extradata_size);
+                csdList.push_back(csd0);
+                mDecoder->setCodecSpecificData(csdList);
+
+                csdList.clear();
+            }
             return 0;
         } else {
             return -1;
@@ -414,7 +478,7 @@ namespace Cicada {
 
         //config drm info
         if (!mDrmUrl.empty() && !mDrmFormat.empty()
-            && mDrmFormat ==  "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed") {
+            && mDrmFormat == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed") {
 
             if (mDrmSessionManager != nullptr) {
                 int drmSessionSize = 0;
@@ -443,7 +507,8 @@ namespace Cicada {
             ret = mDecoder->configureVideo(mMime, mMetaVideoHeight, mMetaVideoHeight, 0,
                                            static_cast<jobject>(mVideoOutObser));
         } else if (codecType == CODEC_AUDIO) {
-            ret = mDecoder->configureAudio(mMime, mMetaAudioSampleRate, mMetaAudioChannels, mMetaAudioIsADTS);
+            ret = mDecoder->configureAudio(mMime, mMetaAudioSampleRate, mMetaAudioChannels,
+                                           mMetaAudioIsADTS);
         }
 
         if (ret >= 0) {
