@@ -48,12 +48,6 @@ namespace Cicada {
             return false;
         }
 
-        if (meta.keyFormat != nullptr
-            && (strcmp(meta.keyFormat, "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed") != 0)) {
-            //has keyformat but not widevine
-            return false;
-        }
-
         string version = get_android_property("ro.build.version.sdk");
 
         if (atoi(version.c_str()) < 16) {
@@ -103,7 +97,6 @@ namespace Cicada {
             return -ENOSPC;
         }
 
-
         mDrmUrl = (meta->keyUrl == nullptr ? "" : meta->keyUrl);
         mDrmFormat = (meta->keyFormat == nullptr ? "" : meta->keyFormat);
 
@@ -122,8 +115,8 @@ namespace Cicada {
 
         setSCD(meta);
 
-        if (meta->keyUrl != nullptr && meta->keyFormat != nullptr
-            && (strcmp(meta->keyFormat, "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed") == 0)) {
+        if (!mDrmUrl.empty() && !mDrmFormat.empty()
+            && mDrmFormat == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed") {
             //check drm status and init decoder at enqueueDecoder
             return 0;
         }

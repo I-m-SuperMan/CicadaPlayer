@@ -4269,8 +4269,10 @@ int SuperMediaPlayer::invokeComponent(std::string content)
 }
 
 void SuperMediaPlayer::initDrmSessionMangerIfNeed(const Stream_meta *meta) {
+    std::string keyFormat = meta->keyFormat == nullptr ? "" : meta->keyFormat;
+    std::string keyUrl = meta->keyUrl == nullptr ? "" : meta->keyUrl;
 
-    if (meta->keyFormat != nullptr && meta->keyUrl != nullptr) {
+    if (!keyFormat.empty() && !keyUrl.empty()) {
 
         if (mDrmSessionManager != nullptr) {
             return;
