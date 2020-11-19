@@ -56,11 +56,11 @@ namespace Cicada{
             return new AFVTBDecoder();
         };
 
-        bool is_supported(enum AFCodecID codec, uint64_t flags, int maxSize) override
+        bool is_supported(const Stream_meta &meta, uint64_t flags, int maxSize) override
         {
             if (!(flags & DECFLAG_HW))
                 return false;
-            return is_supported(codec);
+            return is_supported(meta.codec);
         };
         static AFVTBDecoder se;
 
