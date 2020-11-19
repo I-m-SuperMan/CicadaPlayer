@@ -2218,6 +2218,8 @@ void SuperMediaPlayer::SendVideoFrameToRender(unique_ptr<IAFFrame> frame, bool v
             // for windows init failed, which may need change render type in future.
             mPNotifier->NotifyEvent(MEDIA_PLAYER_EVENT_VIDEO_RENDER_INIT_ERROR, "init video render failed");
         }
+    } else if(mSet->bEnableTunnelRender) {
+        VideoRenderCallback(this, frame->getInfo().pts, nullptr);
     }
 }
 
