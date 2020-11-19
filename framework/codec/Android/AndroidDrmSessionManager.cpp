@@ -29,6 +29,7 @@ static JNINativeMethod mediaCodec_method_table[] = {
         {"native_requestProvision", "(JLjava/lang/String;[B)[B", (void *) AndroidDrmSessionManager::requestProvision},
         {"native_requestKey",       "(JLjava/lang/String;[B)[B", (void *) AndroidDrmSessionManager::requestKey},
         {"native_changeState",      "(JII)V",                    (void *) AndroidDrmSessionManager::changeState},
+        {"native_updateSessionId",  "(J[B)V",                    (void *) AndroidDrmSessionManager::updateSessionId},
 };
 
 int AndroidDrmSessionManager::registerMethod(JNIEnv *pEnv) {
@@ -55,9 +56,9 @@ void AndroidDrmSessionManager::init(JNIEnv *env) {
         jMediaDrmSession_init = env->GetMethodID(jMediaDrmSessionClass, "<init>", "(J)V");
         jMediaDrmSession_requireSession = env->GetMethodID(jMediaDrmSessionClass,
                                                            "requireSession",
-                                                           "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)[B");
+                                                           "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
         jMediaDrmSession_releaseSession = env->GetMethodID(jMediaDrmSessionClass, "releaseSession",
-                                                           "([B)V");
+                                                           "()V");
     }
 }
 
@@ -122,20 +123,11 @@ int AndroidDrmSessionManager::requireDrmSession(const std::string &keyUrl,
     NewStringUTF jLicenseUrl(env, licenseUrl.c_str());
 
     AF_LOGI("drm requireDrmSession.,");
-    jbyteArray sessionId = (jbyteArray) env->CallObjectMethod(mJDrmSessionManger,
+    env->CallVoidMethod(mJDrmSessionManger,
                                                               jMediaDrmSession_requireSession,
                                                               jUrl.getString(), jFormat.getString(),
                                                               jMime.getString(),
                                                               jLicenseUrl.getString());
-
-    if (sessionId == nullptr) {
-        return -1;
-    }
-
-    mSize = env->GetArrayLength(sessionId);;
-    mSessionId = JniUtils::jByteArrayToChars(env, sessionId);
-
-    env->DeleteLocalRef(sessionId);
 
     return 0;
 }
@@ -148,8 +140,7 @@ void AndroidDrmSessionManager::releaseDrmSession() {
         return;
     }
 
-    NewByteArray jSessionId(env, mSessionId, mSize);
-    env->CallVoidMethod(mJDrmSessionManger, jMediaDrmSession_releaseSession, jSessionId.getArray());
+    env->CallVoidMethod(mJDrmSessionManger, jMediaDrmSession_releaseSession);
 }
 
 void
@@ -158,7 +149,6 @@ AndroidDrmSessionManager::getSessionState(int *state, int *code) {
     std::unique_lock<std::mutex> lock(mStateMutex);
     *state = mState;
     *code = mErrorCode;
-
 }
 
 jbyteArray
@@ -235,6 +225,24 @@ AndroidDrmSessionManager::requestKey(JNIEnv *env, jobject instance, jlong native
     } else {
         return nullptr;
     }
+}
+
+
+void AndroidDrmSessionManager::updateSessionId(JNIEnv *env, jobject instance, jlong nativeInstance,
+                            jbyteArray jSessionId) {
+
+
+    if (jSessionId == nullptr) {
+        return ;
+    }
+
+    auto *drmSessionManager = (AndroidDrmSessionManager *) (int64_t) nativeInstance;
+    if(drmSessionManager == nullptr){
+        return;
+    }
+    
+    drmSessionManager->mSize = env->GetArrayLength(jSessionId);;
+    drmSessionManager->mSessionId = JniUtils::jByteArrayToChars(env, jSessionId);
 }
 
 void AndroidDrmSessionManager::changeState(JNIEnv *env, jobject instance, jlong nativeIntance,

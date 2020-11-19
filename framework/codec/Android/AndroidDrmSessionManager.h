@@ -21,15 +21,18 @@ namespace Cicada {
         static int registerMethod(JNIEnv *env);
 
         static jbyteArray
-        requestProvision(JNIEnv *env, jobject instance, jlong nativeIntance, jstring url,
+        requestProvision(JNIEnv *env, jobject instance, jlong nativeInstance, jstring url,
                          jbyteArray data);
 
         static jbyteArray
-        requestKey(JNIEnv *env, jobject instance, jlong nativeIntance, jstring url,
+        requestKey(JNIEnv *env, jobject instance, jlong nativeInstance, jstring url,
                    jbyteArray data);
 
-        static void changeState(JNIEnv *env, jobject instance, jlong nativeIntance,
+        static void changeState(JNIEnv *env, jobject instance, jlong nativeInstance,
                                 jint state, jint errorCode);
+
+        static void updateSessionId(JNIEnv *env, jobject instance, jlong nativeInstance,
+                                    jbyteArray jSessionId);
 
     public:
 
