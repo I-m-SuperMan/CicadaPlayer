@@ -22,6 +22,7 @@ using namespace Cicada;
 
 static jclass jMediaDrmSessionClass = nullptr;
 static jmethodID jMediaDrmSession_init = nullptr;
+static jmethodID jMediaDrmSession_supportDrm = nullptr;
 static jmethodID jMediaDrmSession_requireSession = nullptr;
 static jmethodID jMediaDrmSession_releaseSession = nullptr;
 static jmethodID jMediaDrmSession_isForceInsecureDecoder = nullptr;
@@ -62,6 +63,8 @@ void AndroidDrmSessionManager::init(JNIEnv *env) {
                                                            "()V");
         jMediaDrmSession_isForceInsecureDecoder = env->GetMethodID(jMediaDrmSessionClass, "isForceInsecureDecoder",
                                                            "()Z");
+        jMediaDrmSession_supportDrm = env->GetStaticMethodID(jMediaDrmSessionClass, "supportDrm",
+                                                           "(Ljava/lang/String;)Z");
     }
 }
 
@@ -137,7 +140,7 @@ int AndroidDrmSessionManager::requireDrmSession(const std::string &keyUrl,
     NewStringUTF jMime(env, mime.c_str());
     NewStringUTF jLicenseUrl(env, licenseUrl.c_str());
 
-    AF_LOGI("drm requireDrmSession.,");
+    AF_LOGI("drm requireDrmSession.");
     env->CallVoidMethod(mJDrmSessionManger,
                                                               jMediaDrmSession_requireSession,
                                                               jUrl.getString(), jFormat.getString(),
@@ -197,6 +200,9 @@ AndroidDrmSessionManager::requestProvision(JNIEnv *env, jobject instance, jlong 
         } else {
             jbyteArray mResult = env->NewByteArray(responseDataSize);
             env->SetByteArrayRegion(mResult, 0, responseDataSize, (jbyte *) (responseData));
+
+            free(responseData);
+
             return mResult;
         }
     } else {
@@ -280,6 +286,19 @@ void AndroidDrmSessionManager::changeState(JNIEnv *env, jobject instance, jlong 
 
     drmSessionManager->changeStateInner(sessionState, (int) errorCode);
 
+}
+
+bool AndroidDrmSessionManager::supportDrm(const std::string &format) {
+    JniEnv jniEnv{};
+
+    JNIEnv *env = jniEnv.getEnv();
+    if (env == nullptr) {
+        return false;
+    }
+
+    NewStringUTF formatStr(env, format.c_str());
+    return env->CallStaticBooleanMethod(jMediaDrmSessionClass, jMediaDrmSession_supportDrm,
+                                        formatStr.getString());
 }
 
 void AndroidDrmSessionManager::changeStateInner(int state,

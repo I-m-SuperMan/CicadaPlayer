@@ -51,6 +51,8 @@ namespace Cicada {
 
          void* getSession(int *sessionSize) override ;
 
+         bool supportDrm( const std::string& format) override;
+
          bool isForceInsecureDecoder() override;
 
     private:

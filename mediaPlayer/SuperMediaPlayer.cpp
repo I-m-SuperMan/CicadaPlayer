@@ -2960,17 +2960,13 @@ int SuperMediaPlayer::setUpAudioDecoder(const Stream_meta *meta)
     }
 
     uint64_t flags = 0;
-    if (mSet->bEnableHwVideoDecode) {
+    if (mDrmSessionManager != nullptr) {
         flags = DECFLAG_HW;
     } else {
         flags = DECFLAG_SW;
     }
 
     mAudioDecoder = decoderFactory::create(*meta, flags, 0);
-
-    if(mAudioDecoder == nullptr && flags == DECFLAG_HW) {
-        mAudioDecoder = decoderFactory::create(*meta, DECFLAG_SW, 0);
-    }
 
     if (mAudioDecoder == nullptr) {
         ret = gen_framework_errno(error_class_codec, codec_error_audio_not_support);
@@ -3017,7 +3013,12 @@ int SuperMediaPlayer::SetUpAudioPath()
             meta->isAdts = isADTS(avAFPacket->ToAVPacket()) ? 1 : 0;
         }
 
-        initDrmSessionMangerIfNeed(meta);
+        ret = initDrmSessionMangerIfNeed(meta);
+
+        if(ret < 0) {
+            mPNotifier->NotifyEvent(MEDIA_PLAYER_EVENT_VIDEO_CODEC_NOT_SUPPORT, framework_err2_string(ret));
+            return ret;
+        }
 
         ret = setUpAudioDecoder(meta);
 
@@ -3140,7 +3141,13 @@ int SuperMediaPlayer::SetUpVideoPath()
         }
     }
 
-    initDrmSessionMangerIfNeed(meta);
+    ret = initDrmSessionMangerIfNeed(meta);
+
+    if(ret < 0) {
+        mPNotifier->NotifyEvent(MEDIA_PLAYER_EVENT_VIDEO_CODEC_NOT_SUPPORT, framework_err2_string(ret));
+        return ret;
+    }
+
     ret = CreateVideoDecoder(bHW, *meta);
 
     if (ret < 0) {
@@ -4268,23 +4275,30 @@ int SuperMediaPlayer::invokeComponent(std::string content)
     return mDcaManager->invoke(content);
 }
 
-void SuperMediaPlayer::initDrmSessionMangerIfNeed(const Stream_meta *meta) {
+int SuperMediaPlayer::initDrmSessionMangerIfNeed(const Stream_meta *meta) {
     std::string keyFormat = meta->keyFormat == nullptr ? "" : meta->keyFormat;
     std::string keyUrl = meta->keyUrl == nullptr ? "" : meta->keyUrl;
 
     if (!keyFormat.empty() && !keyUrl.empty()) {
 
         if (mDrmSessionManager != nullptr) {
-            return;
+            return 0;
         }
 
         IDrmSessionManager *pSessionManager = IDrmSessionManager::create();
         if (pSessionManager == nullptr) {
-            AF_LOGW("drm not support ");
-            return;
+            return gen_framework_errno(error_class_drm, drm_error_unsupport_scheme);
         }
 
         mDrmSessionManager = std::unique_ptr<IDrmSessionManager>(pSessionManager);
+
+        bool support = mDrmSessionManager->supportDrm(meta->keyFormat);
+        if(!support) {
+            AF_LOGE("drm not support");
+            mDrmSessionManager = nullptr;
+            return gen_framework_errno(error_class_drm, drm_error_unsupport_scheme);
+        }
+
         mDrmSessionManager->setDrmRequestCallback(mRequestProvisionCb, mRequestKeyCb,
                                                   mRequestUserData);
 
@@ -4300,5 +4314,8 @@ void SuperMediaPlayer::initDrmSessionMangerIfNeed(const Stream_meta *meta) {
         }
 
         mDrmSessionManager->requireDrmSession(meta->keyUrl, meta->keyFormat, mime, "");
+
+        return 0;
     }
+    return 0;
 }

@@ -41,6 +41,8 @@ namespace Cicada {
 
         virtual void* getSession(int *sessionSize) = 0;
 
+        virtual bool supportDrm( const std::string& format) = 0;
+
         virtual bool isForceInsecureDecoder() {
             return false;
         }

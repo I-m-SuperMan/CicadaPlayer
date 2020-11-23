@@ -314,7 +314,7 @@ namespace Cicada {
 
         void updateVideoMeta();
 
-        void initDrmSessionMangerIfNeed(const Stream_meta *meta);
+        int initDrmSessionMangerIfNeed(const Stream_meta *meta);
 
         class ApsaraAudioRenderCallback : public IAudioRenderListener {
         public:
