@@ -51,6 +51,8 @@ namespace Cicada {
 
          void* getSession(int *sessionSize) override ;
 
+         bool isForceInsecureDecoder() override;
+
     private:
 
         void changeStateInner( int state , int errorCode);

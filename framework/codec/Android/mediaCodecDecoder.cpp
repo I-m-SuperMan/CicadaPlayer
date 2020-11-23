@@ -131,39 +131,29 @@ namespace Cicada {
                 return -1;
             }
 
-            std::list<CodecSpecificData> csdList{};
-            CodecSpecificData csd0{};
+            VideoExtraDataParser parser(AV_CODEC_ID_HEVC, meta->extradata, meta->extradata_size);
+            int ret = parser.parser();
+            if (ret >= 0) {
+                std::list<CodecSpecificData> csdList{};
+                CodecSpecificData csd0{};
 
-            csd0.setScd("csd-0", meta->extradata, meta->extradata_size);
-            csdList.push_back(csd0);
-            mDecoder->setCodecSpecificData(csdList);
+                const int data_size =
+                        parser.vps_data_size + parser.sps_data_size + parser.pps_data_size;
+                char data[data_size];
 
-            csdList.clear();
-            return 0;
+                memcpy(data, parser.vps_data, parser.vps_data_size);
+                memcpy(data + parser.vps_data_size, parser.sps_data, parser.sps_data_size);
+                memcpy(data + parser.vps_data_size + parser.sps_data_size, parser.pps_data,
+                       parser.pps_data_size);
 
-//            VideoExtraDataParser parser(AV_CODEC_ID_HEVC, meta->extradata, meta->extradata_size);
-//            int ret = parser.parser();
-//            if (ret >= 0) {
-//                std::list<CodecSpecificData> csdList{};
-//                CodecSpecificData csd0{};
-//
-//                const int data_size =
-//                        parser.vps_data_size + parser.sps_data_size + parser.pps_data_size;
-//                char data[data_size];
-//
-//                memcpy(data, parser.vps_data, parser.vps_data_size);
-//                memcpy(data + parser.vps_data_size, parser.sps_data, parser.sps_data_size);
-//                memcpy(data + parser.vps_data_size + parser.sps_data_size, parser.pps_data,
-//                       parser.pps_data_size);
-//
-//                csd0.setScd("csd-0", data, data_size);
-//                csdList.push_back(csd0);
-//                mDecoder->setCodecSpecificData(csdList);
-//
-//                csdList.clear();
-//            }
-//
-//            return ret;
+                csd0.setScd("csd-0", data, data_size);
+                csdList.push_back(csd0);
+                mDecoder->setCodecSpecificData(csdList);
+
+                csdList.clear();
+            }
+
+            return ret;
         } else if (meta->codec == AF_CODEC_ID_H264) {
 
             if (meta->extradata == nullptr || meta->extradata_size == 0) {
@@ -178,7 +168,7 @@ namespace Cicada {
                 csd0.setScd("csd-0", parser.sps_data, parser.sps_data_size);
                 csdList.push_back(csd0);
                 CodecSpecificData csd1{};
-                csd1.setScd("csd-1", parser.pps_data, parser.sps_data_size);
+                csd1.setScd("csd-1", parser.pps_data, parser.pps_data_size);
                 csdList.push_back(csd1);
                 mDecoder->setCodecSpecificData(csdList);
 
@@ -206,8 +196,7 @@ namespace Cicada {
                 if (sampleIndex < 0) {
                     return -1;
                 }
-
-
+                
                 const size_t kCsdLength = 2;
                 char csd[kCsdLength];
                 csd[0] = (meta->profile + 1) << 3 | sampleIndex >> 1;
@@ -492,6 +481,10 @@ namespace Cicada {
             && mDrmFormat == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed") {
 
             if (mDrmSessionManager != nullptr) {
+
+                bool forceInsecureDecoder = mDrmSessionManager->isForceInsecureDecoder();
+                mDecoder->setForceInsecureDecoder(forceInsecureDecoder);
+
                 int drmSessionSize = 0;
                 void *drmSessionId = mDrmSessionManager->getSession(&drmSessionSize);
                 assert(drmSessionId != nullptr);

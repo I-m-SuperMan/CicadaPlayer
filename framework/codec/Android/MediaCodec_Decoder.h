@@ -84,6 +84,8 @@ namespace Cicada {
 
         int setDrmInfo(const std::string &uuid, const void *sessionId, int size);
 
+        void setForceInsecureDecoder(bool force);
+
         int
         configureVideo(const std::string &mime, int width, int height, int angle, void *surface);
 

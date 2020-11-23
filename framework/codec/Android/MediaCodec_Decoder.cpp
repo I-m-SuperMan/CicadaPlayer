@@ -20,6 +20,7 @@ static jclass jMediaCodecClass = nullptr;
 static jmethodID jMediaCodec_init = nullptr;
 static jmethodID jMediaCodec_setCodecSpecificData = nullptr;
 static jmethodID jMediaCodec_setDrmInfo = nullptr;
+static jmethodID jMediaCodec_setForceInsecureDecoder = nullptr;
 static jmethodID jMediaCodec_configureVideo = nullptr;
 static jmethodID jMediaCodec_configureAudio = nullptr;
 static jmethodID jMediaCodec_start = nullptr;
@@ -47,6 +48,8 @@ void MediaCodec_Decoder::init(JNIEnv *env) {
                                                             "setCodecSpecificData", "(Ljava/lang/Object;)V");
         jMediaCodec_setDrmInfo = env->GetMethodID(jMediaCodecClass, "setDrmInfo",
                                                   "(Ljava/lang/String;[B)Z");
+        jMediaCodec_setForceInsecureDecoder = env->GetMethodID(jMediaCodecClass, "setForceInsecureDecoder",
+                                                  "(Z)V");
         jMediaCodec_configureVideo = env->GetMethodID(jMediaCodecClass, "configureVideo",
                                                       "(Ljava/lang/String;IIILjava/lang/Object;)I");
         jMediaCodec_configureAudio = env->GetMethodID(jMediaCodecClass, "configureAudio",
@@ -152,6 +155,19 @@ int MediaCodec_Decoder::setDrmInfo(const std::string &uuid, const void *sessionI
                                       jSessionId.getArray());
 
     return ret? 0 : MC_ERROR;
+}
+
+void MediaCodec_Decoder::setForceInsecureDecoder(bool force)
+{
+    JniEnv jniEnv{};
+
+    JNIEnv *env = jniEnv.getEnv();
+    if (env == nullptr) {
+        return ;
+    }
+
+    env->CallVoidMethod(mMediaCodec, jMediaCodec_setForceInsecureDecoder,  (jboolean)force);
+
 }
 
 int MediaCodec_Decoder::configureVideo(const std::string &mime, int width, int height, int angle,

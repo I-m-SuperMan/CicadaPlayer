@@ -24,6 +24,7 @@ static jclass jMediaDrmSessionClass = nullptr;
 static jmethodID jMediaDrmSession_init = nullptr;
 static jmethodID jMediaDrmSession_requireSession = nullptr;
 static jmethodID jMediaDrmSession_releaseSession = nullptr;
+static jmethodID jMediaDrmSession_isForceInsecureDecoder = nullptr;
 
 static JNINativeMethod mediaCodec_method_table[] = {
         {"native_requestProvision", "(JLjava/lang/String;[B)[B", (void *) AndroidDrmSessionManager::requestProvision},
@@ -59,6 +60,8 @@ void AndroidDrmSessionManager::init(JNIEnv *env) {
                                                            "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
         jMediaDrmSession_releaseSession = env->GetMethodID(jMediaDrmSessionClass, "releaseSession",
                                                            "()V");
+        jMediaDrmSession_isForceInsecureDecoder = env->GetMethodID(jMediaDrmSessionClass, "isForceInsecureDecoder",
+                                                           "()Z");
     }
 }
 
@@ -71,6 +74,18 @@ void AndroidDrmSessionManager::unInit(JNIEnv *env) {
         env->DeleteGlobalRef(jMediaDrmSessionClass);
         jMediaDrmSessionClass = nullptr;
     }
+}
+
+bool AndroidDrmSessionManager::isForceInsecureDecoder() {
+    JniEnv jniEnv{};
+
+    JNIEnv *env = jniEnv.getEnv();
+    if (env == nullptr) {
+        return false;
+    }
+
+    jboolean  ret = env->CallBooleanMethod(mJDrmSessionManger, jMediaDrmSession_isForceInsecureDecoder);
+    return (bool) ret;
 }
 
 AndroidDrmSessionManager::AndroidDrmSessionManager() {
