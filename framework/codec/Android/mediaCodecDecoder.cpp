@@ -131,28 +131,39 @@ namespace Cicada {
                 return -1;
             }
 
-            VideoExtraDataParser parser(AV_CODEC_ID_HEVC, meta->extradata, meta->extradata_size);
-            int ret = parser.parser();
-            if (ret >= 0) {
-                std::list<CodecSpecificData> csdList{};
-                CodecSpecificData csd0{};
+            std::list<CodecSpecificData> csdList{};
+            CodecSpecificData csd0{};
 
-                const int data_size = parser.vps_data_size + parser.sps_data_size + parser.pps_data_size;
-                char data[data_size];
+            csd0.setScd("csd-0", meta->extradata, meta->extradata_size);
+            csdList.push_back(csd0);
+            mDecoder->setCodecSpecificData(csdList);
 
-                memcpy(data, parser.vps_data, parser.vps_data_size);
-                memcpy(data + parser.vps_data_size, parser.sps_data, parser.sps_data_size);
-                memcpy(data + parser.vps_data_size + parser.sps_data_size, parser.pps_data,
-                       parser.pps_data_size);
+            csdList.clear();
+            return 0;
 
-                csd0.setScd("csd-0", data, data_size);
-                csdList.push_back(csd0);
-                mDecoder->setCodecSpecificData(csdList);
-
-                csdList.clear();
-            }
-
-            return ret;
+//            VideoExtraDataParser parser(AV_CODEC_ID_HEVC, meta->extradata, meta->extradata_size);
+//            int ret = parser.parser();
+//            if (ret >= 0) {
+//                std::list<CodecSpecificData> csdList{};
+//                CodecSpecificData csd0{};
+//
+//                const int data_size =
+//                        parser.vps_data_size + parser.sps_data_size + parser.pps_data_size;
+//                char data[data_size];
+//
+//                memcpy(data, parser.vps_data, parser.vps_data_size);
+//                memcpy(data + parser.vps_data_size, parser.sps_data, parser.sps_data_size);
+//                memcpy(data + parser.vps_data_size + parser.sps_data_size, parser.pps_data,
+//                       parser.pps_data_size);
+//
+//                csd0.setScd("csd-0", data, data_size);
+//                csdList.push_back(csd0);
+//                mDecoder->setCodecSpecificData(csdList);
+//
+//                csdList.clear();
+//            }
+//
+//            return ret;
         } else if (meta->codec == AF_CODEC_ID_H264) {
 
             if (meta->extradata == nullptr || meta->extradata_size == 0) {
