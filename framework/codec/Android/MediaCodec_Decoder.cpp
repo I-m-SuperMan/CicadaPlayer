@@ -377,6 +377,11 @@ int MediaCodec_Decoder::queueSecureInputBuffer(int index, void *buffer, size_t s
     if (jBuffer != nullptr) {
         env->DeleteLocalRef(jBuffer);
     }
+
+    if(encryptionInfo != nullptr){
+        env->DeleteLocalRef(encryptionInfo);
+    }
+
     return ret;
 }
 
