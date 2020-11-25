@@ -578,14 +578,20 @@ namespace Cicada {
 
         int nalUnitPrefixLength = naluLengthSize + 1;
         int nalUnitLengthFieldLengthDiff = 4 - naluLengthSize;
-
         int sampleCurrentNalBytesRemaining = 0;
+
+        *new_size = size;
+        *new_data = static_cast<uint8_t *>(malloc(*new_size));
+        uint8_t* new_data_ptr = *new_data;
+        uint8_t* ori_data_ptr = const_cast<uint8_t *>(data);
+
         while (sampleBytesWritten < sampleSize) {
 
             if (sampleCurrentNalBytesRemaining == 0) {
-
+//new nal
                 for (int i = 0; i < nalUnitPrefixLength; i++) {
-                    nalPrefixData[nalUnitLengthFieldLengthDiff + i] = data[i];
+                    nalPrefixData[nalUnitLengthFieldLengthDiff + i] = *ori_data_ptr;
+                    ori_data_ptr++;
                 }
 
                 int nalLengthInt = AV_RB32(nalPrefixData);
@@ -596,29 +602,43 @@ namespace Cicada {
 
                 sampleCurrentNalBytesRemaining = nalLengthInt - 1;
 
+                if(sampleBytesWritten + 5 > *new_size){
+
+                    *new_size = sampleBytesWritten + 5;
+
+                    *new_data = static_cast<uint8_t *>(realloc(*new_data, *new_size));
+                    new_data_ptr = *new_data + sampleBytesWritten;
+                }
+
                 //put start code
-                tmpData.push_back(0);
-                tmpData.push_back(0);
-                tmpData.push_back(0);
-                tmpData.push_back(1);
+                *new_data_ptr = 0; new_data_ptr++;
+                *new_data_ptr = 0; new_data_ptr++;
+                *new_data_ptr = 0; new_data_ptr++;
+                *new_data_ptr = 1; new_data_ptr++;
                 //nal type
-                tmpData.push_back(nalPrefixData[4]);
+                *new_data_ptr = nalPrefixData[4]; new_data_ptr++;
 
                 sampleBytesWritten += 5;
                 sampleSize += nalUnitLengthFieldLengthDiff;
 
             } else {
-                for (int i = 0; i < sampleCurrentNalBytesRemaining; i++) {
-                    tmpData.push_back(data[nalUnitPrefixLength + i]);
+                if(sampleBytesWritten + sampleCurrentNalBytesRemaining > *new_size){
+                    *new_size = sampleBytesWritten + sampleCurrentNalBytesRemaining;
+                    *new_data = static_cast<uint8_t *>(realloc(*new_data, *new_size));
+
+                    new_data_ptr = *new_data + sampleBytesWritten;
                 }
+                memcpy(new_data_ptr, ori_data_ptr , sampleCurrentNalBytesRemaining );
+                ori_data_ptr = ori_data_ptr + sampleCurrentNalBytesRemaining;
+                new_data_ptr = new_data_ptr + sampleCurrentNalBytesRemaining;
+
                 sampleBytesWritten += sampleCurrentNalBytesRemaining;
                 sampleCurrentNalBytesRemaining -= sampleCurrentNalBytesRemaining;
             }
         }
 
-        *new_data = static_cast<uint8_t *>(malloc(sampleBytesWritten));
-        memcpy(*new_data, tmpData.data(), sampleBytesWritten);
-        *new_size = sampleBytesWritten;
+        assert(*new_size == sampleBytesWritten);
 
+        *new_size = sampleBytesWritten;
     }
 }
