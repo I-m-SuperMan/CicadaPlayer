@@ -856,7 +856,9 @@ int h2645_ps_to_nalu(const uint8_t *src, int src_size, uint8_t **out, int *out_s
 
 int parse_h264_extraData(AVCodecContext *avctx , const uint8_t* extraData,int extraData_size,
                          uint8_t** sps_data ,int*sps_data_size,
-                         uint8_t** pps_data, int* pps_data_size)
+                         uint8_t** pps_data, int* pps_data_size,
+                         int* nal_length_size
+                         )
 {
     int ret;
 
@@ -864,11 +866,10 @@ int parse_h264_extraData(AVCodecContext *avctx , const uint8_t* extraData,int ex
     const PPS *pps = NULL;
     const SPS *sps = NULL;
     int is_avc = 0;
-    int nal_length_size = 0;
 
     memset(&ps, 0, sizeof(ps));
 
-    ret = ff_h264_decode_extradata((const uint8_t *) extraData, extraData_size, &ps, &is_avc, &nal_length_size, 0, avctx);
+    ret = ff_h264_decode_extradata((const uint8_t *) extraData, extraData_size, &ps, &is_avc, nal_length_size, 0, avctx);
     if (ret < 0) {
         goto done;
     }
@@ -909,7 +910,8 @@ int parse_h264_extraData(AVCodecContext *avctx , const uint8_t* extraData,int ex
 int parse_h265_extraData(AVCodecContext *avctx, const uint8_t* extradata,int extradata_size,
                          uint8_t** vps_data ,int*vps_data_size,
                          uint8_t** sps_data ,int*sps_data_size,
-                         uint8_t** pps_data, int* pps_data_size)
+                         uint8_t** pps_data, int* pps_data_size,
+                         int* nal_length_size)
 {
     int i;
     int ret;
@@ -921,12 +923,11 @@ int parse_h265_extraData(AVCodecContext *avctx, const uint8_t* extradata,int ext
     const HEVCPPS *pps = NULL;
     const HEVCSPS *sps = NULL;
     int is_nalff = 0;
-    int nal_length_size = 0;
 
     memset(&ps, 0, sizeof(ps));
     memset(&sei, 0, sizeof(sei));
 
-    ret = ff_hevc_decode_extradata(extradata, extradata_size, &ps, &sei, &is_nalff, &nal_length_size, 0, 1, avctx);
+    ret = ff_hevc_decode_extradata(extradata, extradata_size, &ps, &sei, &is_nalff, nal_length_size, 0, 1, avctx);
     if (ret < 0) {
         goto done;
     }

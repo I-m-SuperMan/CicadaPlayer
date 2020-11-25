@@ -42,6 +42,7 @@ namespace Cicada {
         int vps_data_size = 0;
         int sps_data_size = 0;
         int pps_data_size = 0;
+        int nal_length_size = 0;
 
     private:
         AVCodecID codecId = AVCodecID::AV_CODEC_ID_NONE;

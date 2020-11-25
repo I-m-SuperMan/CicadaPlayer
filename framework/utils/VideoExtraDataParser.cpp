@@ -29,12 +29,14 @@ int VideoExtraDataParser::parser() {
     if (codecId == AVCodecID::AV_CODEC_ID_H264) {
         ret = parse_h264_extraData(avctx, extraData, extraData_size,
                                    &sps_data, &sps_data_size,
-                                   &pps_data, &pps_data_size);
+                                   &pps_data, &pps_data_size ,
+                                   &nal_length_size);
     } else if (codecId == AV_CODEC_ID_HEVC) {
         ret = parse_h265_extraData(avctx, extraData, extraData_size,
                                    &vps_data, &vps_data_size,
                                    &sps_data, &sps_data_size,
-                                   &pps_data, &pps_data_size);
+                                   &pps_data, &pps_data_size,
+                                   &nal_length_size);
     }
 
     avcodec_free_context(&avctx);
