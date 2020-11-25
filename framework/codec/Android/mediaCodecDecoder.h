@@ -47,7 +47,7 @@ namespace Cicada{
     private:
         static bool checkSupport(const Stream_meta &meta, uint64_t flags, int maxSize);
 
-        int setSCD(const Stream_meta *meta);
+        int setCSD(const Stream_meta *meta);
 
         void releaseDecoder();
 
@@ -112,6 +112,10 @@ namespace Cicada{
         int mMetaAudioSampleRate{0};
         int mMetaAudioChannels{0};
         int mMetaAudioIsADTS{0};
+
+        int naluLengthSize = 0;
+
+        void convertToDrmDataIfNeed(uint8_t **new_data, int *new_size, const uint8_t *data, int size);
     };
 }
 

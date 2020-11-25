@@ -11,6 +11,7 @@
 #include <utils/VideoExtraDataParser.h>
 
 extern "C" {
+#include <libavutil/intreadwrite.h>
 #include <utils/errors/framework_error.h>
 }
 
@@ -110,13 +111,11 @@ namespace Cicada {
             mMetaAudioIsADTS = meta->isAdts;
         }
 
-
         lock_guard<recursive_mutex> func_entry_lock(mFuncEntryMutex);
 
-        setSCD(meta);
+        setCSD(meta);
 
-        if (!mDrmUrl.empty() && !mDrmFormat.empty()
-            && mDrmFormat == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed") {
+        if (mDrmSessionManager != nullptr) {
             //check drm status and init decoder at enqueueDecoder
             return 0;
         }
@@ -124,7 +123,7 @@ namespace Cicada {
         return configDecoder();
     }
 
-    int mediaCodecDecoder::setSCD(const Stream_meta *meta) {
+    int mediaCodecDecoder::setCSD(const Stream_meta *meta) {
         if (meta->codec == AF_CODEC_ID_HEVC) {
 
             if (meta->extradata == nullptr || meta->extradata_size == 0) {
@@ -134,6 +133,7 @@ namespace Cicada {
             VideoExtraDataParser parser(AV_CODEC_ID_HEVC, meta->extradata, meta->extradata_size);
             int ret = parser.parser();
             if (ret >= 0) {
+                naluLengthSize = parser.nal_length_size;
                 std::list<CodecSpecificData> csdList{};
                 CodecSpecificData csd0{};
 
@@ -163,6 +163,8 @@ namespace Cicada {
             VideoExtraDataParser parser(AV_CODEC_ID_H264, meta->extradata, meta->extradata_size);
             int ret = parser.parser();
             if (ret >= 0) {
+                naluLengthSize = parser.nal_length_size;
+
                 std::list<CodecSpecificData> csdList{};
                 CodecSpecificData csd0{};
                 csd0.setScd("csd-0", parser.sps_data, parser.sps_data_size);
@@ -332,9 +334,23 @@ namespace Cicada {
                     pPacket->getEncryptionInfo(&encryptionInfo);
                 }
 
+                uint8_t *new_data = nullptr;
+                int new_size = 0;
+                convertToDrmDataIfNeed(&new_data, &new_size, data, size);
+
+                if (new_data != nullptr) {
+                    data = new_data;
+                    size = new_size;
+                }
+
                 ret = mDecoder->queueSecureInputBuffer(index, data, static_cast<size_t>(size),
                                                        &encryptionInfo, pts,
                                                        false);
+
+                if (new_data != nullptr) {
+                    free(new_data);
+                }
+
             } else {
                 ret = mDecoder->queueInputBuffer(index, data, static_cast<size_t>(size), pts,
                                                  false);
@@ -474,31 +490,28 @@ namespace Cicada {
     }
 
     int mediaCodecDecoder::mayInitCodec() {
-        int ret = -1;
+        int ret = 0;
 
         //config drm info
-        if (!mDrmUrl.empty() && !mDrmFormat.empty()
-            && mDrmFormat == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed") {
+        if (mDrmSessionManager != nullptr) {
 
-            if (mDrmSessionManager != nullptr) {
+            bool forceInsecureDecoder = mDrmSessionManager->isForceInsecureDecoder();
+            mDecoder->setForceInsecureDecoder(forceInsecureDecoder);
 
-                bool forceInsecureDecoder = mDrmSessionManager->isForceInsecureDecoder();
-                mDecoder->setForceInsecureDecoder(forceInsecureDecoder);
-
-                int drmSessionSize = 0;
-                void *drmSessionId = mDrmSessionManager->getSession(&drmSessionSize);
-                assert(drmSessionId != nullptr);
-                ret = mDecoder->setDrmInfo("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed",
-                                           drmSessionId, drmSessionSize);
-            }
-
-            if (ret < 0) {
-                AF_LOGE("failed to config mDecoder drm info %d", ret);
-                releaseDecoder();
-                ret = gen_framework_errno(error_class_codec, codec_error_video_device_error);
-                return ret;
-            }
+            int drmSessionSize = 0;
+            void *drmSessionId = mDrmSessionManager->getSession(&drmSessionSize);
+            assert(drmSessionId != nullptr);
+            ret = mDecoder->setDrmInfo("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed",
+                                       drmSessionId, drmSessionSize);
         }
+
+        if (ret < 0) {
+            AF_LOGE("failed to config mDecoder drm info %d", ret);
+            releaseDecoder();
+            ret = gen_framework_errno(error_class_codec, codec_error_video_device_error);
+            return ret;
+        }
+
 
         return configDecoder();
     }
@@ -508,7 +521,7 @@ namespace Cicada {
 
         int ret = -1;
         if (codecType == CODEC_VIDEO) {
-            ret = mDecoder->configureVideo(mMime, mMetaVideoHeight, mMetaVideoHeight, 0,
+            ret = mDecoder->configureVideo(mMime, mMetaVideoWidth, mMetaVideoHeight, 0,
                                            static_cast<jobject>(mVideoOutObser));
         } else if (codecType == CODEC_AUDIO) {
             ret = mDecoder->configureAudio(mMime, mMetaAudioSampleRate, mMetaAudioChannels,
@@ -534,5 +547,78 @@ namespace Cicada {
         }
 
         return ret;
+    }
+
+    void mediaCodecDecoder::convertToDrmDataIfNeed(uint8_t **new_data, int *new_size, const uint8_t *data,
+                                                   int size) {
+        if(data == nullptr || size == 0) {
+            return;
+        }
+
+        if(codecType == CODEC_VIDEO) {
+            assert(naluLengthSize != 0);
+        }
+
+        if(naluLengthSize == 0){
+            return;
+        }
+
+        const int nalPrefixLen = 5;
+        char nalPrefixData[nalPrefixLen];
+        nalPrefixData[0] = 0;
+        nalPrefixData[1] = 0;
+        nalPrefixData[2] = 0;
+        nalPrefixData[3] = 0;
+        nalPrefixData[4] = 0;
+
+        int sampleBytesWritten = 0;
+        int sampleSize = size;
+
+        std::vector<uint8_t> tmpData{};
+
+        int nalUnitPrefixLength = naluLengthSize + 1;
+        int nalUnitLengthFieldLengthDiff = 4 - naluLengthSize;
+
+        int sampleCurrentNalBytesRemaining = 0;
+        while (sampleBytesWritten < sampleSize) {
+
+            if (sampleCurrentNalBytesRemaining == 0) {
+
+                for (int i = 0; i < nalUnitPrefixLength; i++) {
+                    nalPrefixData[nalUnitLengthFieldLengthDiff + i] = data[i];
+                }
+
+                int nalLengthInt = AV_RB32(nalPrefixData);
+                if(nalLengthInt < 1){
+                    AF_LOGE("Invalid NAL length");
+                    return;
+                }
+
+                sampleCurrentNalBytesRemaining = nalLengthInt - 1;
+
+                //put start code
+                tmpData.push_back(0);
+                tmpData.push_back(0);
+                tmpData.push_back(0);
+                tmpData.push_back(1);
+                //nal type
+                tmpData.push_back(nalPrefixData[4]);
+
+                sampleBytesWritten += 5;
+                sampleSize += nalUnitLengthFieldLengthDiff;
+
+            } else {
+                for (int i = 0; i < sampleCurrentNalBytesRemaining; i++) {
+                    tmpData.push_back(data[nalUnitPrefixLength + i]);
+                }
+                sampleBytesWritten += sampleCurrentNalBytesRemaining;
+                sampleCurrentNalBytesRemaining -= sampleCurrentNalBytesRemaining;
+            }
+        }
+
+        *new_data = static_cast<uint8_t *>(malloc(sampleBytesWritten));
+        memcpy(*new_data, tmpData.data(), sampleBytesWritten);
+        *new_size = sampleBytesWritten;
+
     }
 }
