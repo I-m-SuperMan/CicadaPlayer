@@ -17,7 +17,7 @@ extern "C" {
 #include "gtest/gtest.h"
 using namespace Cicada;
 
-void test_demuxUrl(const string &url, bool merge, Stream_type type, const std::function<void(demuxer_service* demuxer, IAFPacket *pkt)> &judgeFunc)
+void test_demuxUrl(const string &url, header_type merge, Stream_type type, const std::function<void(demuxer_service* demuxer, IAFPacket *pkt)> &judgeFunc)
 {
     auto source = dataSourcePrototype::create(url);
     source->Open(0);
@@ -96,27 +96,27 @@ void test_demuxUrl(const string &url, bool merge, Stream_type type, const std::f
 }
 
 
-void test_mergeHeader(std::string url, bool merge)
+void test_mergeHeader(std::string url, header_type merge)
 {
     test_demuxUrl(url, merge, STREAM_TYPE_VIDEO, [merge](demuxer_service* demuxer,IAFPacket *packet) -> void {
-        if (merge) {
+        if (merge == header_type::header_type_annexb) {
             ASSERT_EQ(memcmp(packet->getData(), "\0\0\0\1", 4), 0);
-        } else {
+        } else if(merge == header_type::header_type_xVcc){
             ASSERT_NE(memcmp(packet->getData(), "\0\0\0\1", 4), 0);
         }
     });
 }
 
-void test_mergeAudioHeader(const std::string &url, bool merge)
+void test_mergeAudioHeader(const std::string &url, header_type merge)
 {
     test_demuxUrl(url, merge, STREAM_TYPE_AUDIO, [merge](demuxer_service* demuxer,IAFPacket *packet) -> void {
         uint8_t *data = packet->getData();
-        if (merge) {
+        if (merge == header_type::header_type_annexb) {
             ASSERT_EQ(AV_RB16(data) & 0xfff0, 0xfff0);
             int mFrameLength =
                     (data[3] & 0x03) << 11 | (data[4] & 0xFF) << 3 | (data[5] & 0xE0) >> 5;
             ASSERT_EQ(packet->getSize() ,mFrameLength);
-        } else {
+        } else if(merge == header_type::header_type_xVcc){
             ASSERT_NE(AV_RB16(data) & 0xfff0, 0xfff0);
         }
     });
@@ -154,7 +154,7 @@ void testFirstSeek(const string &url, int64_t time, int64_t abs_error)
 }
 
 
-void test_encryptionInfo(const std::string &url ,  Stream_type type ,bool merge)
+void test_encryptionInfo(const std::string &url ,  Stream_type type ,header_type merge)
 {
     test_demuxUrl(url, merge, STREAM_TYPE_VIDEO, [](demuxer_service* demuxer,IAFPacket *pkt) -> void {
         IAFPacket::EncryptionInfo info{};
@@ -166,7 +166,7 @@ void test_encryptionInfo(const std::string &url ,  Stream_type type ,bool merge)
 }
 
 void test_metaKeyInfo(const std::string& url, Stream_type type ) {
-    test_demuxUrl(url, false, type, [](demuxer_service *demuxer, IAFPacket *pkt) -> void {
+    test_demuxUrl(url, header_type_no_change, type, [](demuxer_service *demuxer, IAFPacket *pkt) -> void {
         int index = pkt->getInfo().streamIndex;
         unique_ptr<streamMeta> mCurrentStreamMeta{};
         demuxer->GetStreamMeta(mCurrentStreamMeta, index, false);
@@ -176,8 +176,8 @@ void test_metaKeyInfo(const std::string& url, Stream_type type ) {
     });
 }
 
-void test_csd( const std::string& url , bool merge) {
-    test_demuxUrl(url, false, STREAM_TYPE_VIDEO, [merge](demuxer_service *demuxer, IAFPacket *pkt) -> void {
+void test_csd( const std::string& url , header_type merge) {
+    test_demuxUrl(url, header_type_no_change, STREAM_TYPE_VIDEO, [merge](demuxer_service *demuxer, IAFPacket *pkt) -> void {
         int index = pkt->getInfo().streamIndex;
         unique_ptr<streamMeta> mCurrentStreamMeta{};
         demuxer->GetStreamMeta(mCurrentStreamMeta, index, false);

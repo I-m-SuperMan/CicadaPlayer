@@ -433,7 +433,19 @@ namespace Cicada {
         }
 
         if (mPDemuxer->getDemuxerHandle()) {
-            mPDemuxer->getDemuxerHandle()->setBitStreamFormat(this->mMergeVideoHeader, this->mMergerAudioHeader);
+
+            string &keyFormat = mCurSeg->encryption.keyFormat;
+
+            header_type mergeVideoHeader = this->mMergeVideoHeader;
+            header_type mergeAudioHeader = this->mMergerAudioHeader;
+
+            if(keyFormat == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed" /*WideVine*/
+               || keyFormat == "com.apple.streamingkeydelivery"/*FairPlay*/) {
+                //need keep original data , no bsf.
+                mergeVideoHeader = header_type::header_type_no_change;
+                mergeAudioHeader = header_type::header_type_no_change;
+            }
+            mPDemuxer->getDemuxerHandle()->setBitStreamFormat(mergeVideoHeader, mergeAudioHeader);
         }
 
         //        if (mDemuxerMeta) {

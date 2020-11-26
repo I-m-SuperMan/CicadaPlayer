@@ -3488,9 +3488,9 @@ void SuperMediaPlayer::ProcessPrepareMsg()
     // TODO: video tool box HW decoder not merge the header
     if (mDemuxerService->getDemuxerHandle()) {
 #ifdef __APPLE__
-        mDemuxerService->getDemuxerHandle()->setBitStreamFormat(false, false);
+        mDemuxerService->getDemuxerHandle()->setBitStreamFormat(header_type::header_type_xVcc, header_type::header_type_xVcc);
 #else
-        mDemuxerService->getDemuxerHandle()->setBitStreamFormat(true, true);
+        mDemuxerService->getDemuxerHandle()->setBitStreamFormat(header_type::header_type_annexb, header_type::header_type_annexb);
 #endif
         if (noFile) {
             IDataSource::SourceConfig config;

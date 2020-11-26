@@ -113,6 +113,7 @@ bool AVAFPacket::getEncryptionInfo(IAFPacket::EncryptionInfo *dst)
         const uint8_t *new_encryption_info = av_packet_get_side_data(mpkt, AV_PKT_DATA_ENCRYPTION_INFO, &encryption_info_size);
 
         if (encryption_info_size <= 0 || new_encryption_info == nullptr) {
+            assert(0);
             return false;
         }
 
@@ -120,6 +121,7 @@ bool AVAFPacket::getEncryptionInfo(IAFPacket::EncryptionInfo *dst)
     }
 
     if (mAVEncryptionInfo == nullptr) {
+        assert(0);
         return false;
     }
 
@@ -147,9 +149,8 @@ bool AVAFPacket::getEncryptionInfo(IAFPacket::EncryptionInfo *dst)
         dst->subsample_count = mAVEncryptionInfo->subsample_count;
         for(int i = 0; i < mAVEncryptionInfo->subsample_count; i++) {
             SubsampleEncryptionInfo subInfo{};
-            AVSubsampleEncryptionInfo &avSubsampleEncryptionInfo = mAVEncryptionInfo->subsamples[i];
-            subInfo.bytes_of_protected_data = avSubsampleEncryptionInfo.bytes_of_protected_data;
-            subInfo.bytes_of_clear_data = static_cast<unsigned int>(getSize() - avSubsampleEncryptionInfo.bytes_of_protected_data);
+            subInfo.bytes_of_protected_data =  mAVEncryptionInfo->subsamples[i].bytes_of_protected_data;
+            subInfo.bytes_of_clear_data = mAVEncryptionInfo->subsamples[i].bytes_of_clear_data;
             dst->subsamples.push_back(subInfo);
         }
     } else {

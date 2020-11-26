@@ -420,7 +420,7 @@ namespace Cicada {
         int ret = 0;
         const AVCodecParameters *codecpar = mCtx->streams[index]->codecpar;
 
-        if (mMergeVideoHeader) {
+        if (mMergeVideoHeader == header_type::header_type_annexb) {
             if (codecpar->codec_id == AV_CODEC_ID_H264 && codecpar->extradata != nullptr && (codecpar->extradata[0] == 1)) {
                 bsfName = "h264_mp4toannexb";
             } else if (codecpar->codec_id == AV_CODEC_ID_HEVC && codecpar->extradata_size >= 5 &&
@@ -430,7 +430,7 @@ namespace Cicada {
             }
 
             // TODO: mpeg4 dump extra bsf
-        } else {
+        } else if (mMergeVideoHeader == header_type::header_type_xVcc) {
             if (codecpar->codec_id == AV_CODEC_ID_H264 && codecpar->extradata != nullptr && (codecpar->extradata[0] != 1)) {
                 bsfName = "h26xAnnexb2xVcc";
             } else if (codecpar->codec_id == AV_CODEC_ID_HEVC && codecpar->extradata_size >= 5 &&
@@ -438,6 +438,8 @@ namespace Cicada {
                          AV_RB24(codecpar->extradata) != 0x000001)) {
                 bsfName = "h26xAnnexb2xVcc";
             }
+        }else if (mMergeVideoHeader == header_type::header_type_no_change) {
+
         }
 
         if (!bsfName.empty()) {

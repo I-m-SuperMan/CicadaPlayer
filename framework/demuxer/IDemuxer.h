@@ -28,6 +28,11 @@ namespace Cicada {
         demuxer_type_webvtt,
     } demuxer_type;
 
+    typedef enum header_type {
+        header_type_no_change,
+        header_type_annexb,
+        header_type_xVcc,
+    } header_type;
 
     class CICADA_CPLUS_EXTERN IDemuxer : public OptionOwner, public IDCA {
     public:
@@ -147,7 +152,7 @@ namespace Cicada {
             return 0;
         }
 
-        virtual void setBitStreamFormat(bool vMergeHeader, bool aMergeHeader)
+        virtual void setBitStreamFormat(header_type vMergeHeader, header_type aMergeHeader)
         {
             mMergeVideoHeader = vMergeHeader;
             mMergeAudioHeader = aMergeHeader;
@@ -186,8 +191,8 @@ namespace Cicada {
         string mPath{};
         IDataSource::SourceConfig sourceConfig{};
 
-        bool mMergeVideoHeader = false;
-        bool mMergeAudioHeader = false;
+        header_type mMergeVideoHeader = header_type ::header_type_no_change;
+        header_type mMergeAudioHeader = header_type ::header_type_no_change;
 
         DemuxerMetaInfo *mMetaInfo = nullptr;
         std::string mName = "IDemuxer";
