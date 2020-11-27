@@ -11,7 +11,7 @@
 #include <utils/Android/NewStringUTF.h>
 #include <utils/Android/NewByteArray.h>
 #include "AndroidDrmSessionManager.h"
-#include "MediaCodec_Decoder.h"
+#include "codec/Android/jni/MediaCodec_Decoder.h"
 
 extern "C" {
 #include <utils/errors/framework_error.h>

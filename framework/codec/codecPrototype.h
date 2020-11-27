@@ -5,6 +5,7 @@
 #ifndef CICADA_PLAYER_CODECPROTOTYPE_H
 #define CICADA_PLAYER_CODECPROTOTYPE_H
 #include <memory>
+#include <map>
 #include "IDecoder.h"
 
 class CICADA_CPLUS_EXTERN codecPrototype {
@@ -16,11 +17,11 @@ public:
 
     virtual Cicada::IDecoder *clone() = 0;
 
-    virtual bool is_supported(const Stream_meta &meta, uint64_t flags, int maxSize) = 0;
+    virtual bool is_supported(const Stream_meta &meta, uint64_t flags, int maxSize,std::map<std::string,std::string> drmInfo) = 0;
 
     static void addPrototype(codecPrototype *se);
 
-    static Cicada::IDecoder *create(const Stream_meta &meta, uint64_t flags, int maxSize);
+    static Cicada::IDecoder *create(const Stream_meta &meta, uint64_t flags, int maxSize, std::map<std::string,std::string> drmInfo);
 };
 
 

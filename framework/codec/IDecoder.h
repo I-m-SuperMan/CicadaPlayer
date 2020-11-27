@@ -160,7 +160,7 @@ namespace Cicada {
 
         virtual uint32_t getInputPaddingSize() = 0;
 
-        virtual void setDrmSessionManager(IDrmSessionManager *drmSessionManager) {
+        virtual void setRequireDrmHandlerCallback(std::function<IDrmHandler*()>) {
             mDrmSessionManager = drmSessionManager;
         }
 

@@ -30,14 +30,19 @@ endif ()
 if (ANDROID AND ENABLE_MEDIA_CODEC_DECODER)
     target_compile_definitions(videodec PRIVATE ENABLE_MEDIA_CODEC_DECODER)
     target_sources(videodec PRIVATE
+            Android/AbsMediaCodecDecoder.cpp
+            Android/AbsMediaCodecDecoder.h
             Android/mediaCodecDecoder.h
             Android/mediaCodecDecoder.cpp
-            Android/MediaCodec_Decoder.h
-            Android/MediaCodec_Decoder.cpp
-            Android/OutputBufferInfo.h
-            Android/OutputBufferInfo.cpp
-            Android/JEncryptionInfo.h
-            Android/JEncryptionInfo.cpp
+            Android/WideVineMediaCodecDecoder.cpp
+            Android/WideVineMediaCodecDecoder.h
+
+            Android/jni/MediaCodec_Decoder.h
+            Android/jni/MediaCodec_Decoder.cpp
+            Android/jni/OutputBufferInfo.h
+            Android/jni/OutputBufferInfo.cpp
+            Android/jni/JEncryptionInfo.h
+            Android/jni/JEncryptionInfo.cpp
             Android/AndroidDrmSessionManager.cpp
             Android/AndroidDrmSessionManager.h
             )

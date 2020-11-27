@@ -62,6 +62,7 @@ SuperMediaPlayer::SuperMediaPlayer()
     mApsaraThread = static_cast<unique_ptr<afThread>>(new afThread([this]() -> int { return this->mainService(); }, LOG_TAG));
     mSourceListener = static_cast<unique_ptr<SuperMediaPlayerDataSourceListener>>(new SuperMediaPlayerDataSourceListener(*this));
     mDcaManager = static_cast<unique_ptr<SMP_DCAManager>>(new SMP_DCAManager(*this));
+    mDrmManager = std::unique_ptr<DrmManager>(new DrmManager());
 
     mPNotifier = new PlayerNotifier();
     Reset();
@@ -84,7 +85,7 @@ SuperMediaPlayer::~SuperMediaPlayer()
     // delete mPNotifier after mPMainThread, to avoid be using
     delete mPNotifier;
     mPNotifier = nullptr;
-    mDrmSessionManager = nullptr;
+    mDrmManager = nullptr;
 }
 
 void SuperMediaPlayer::putMsg(PlayMsgType type, const MsgParam &param, bool trigger)
@@ -453,7 +454,6 @@ int SuperMediaPlayer::Stop()
     }
     mBufferController->ClearPacket(BUFFER_TYPE_SUBTITLE);
     Reset();
-    mDrmSessionManager = nullptr;
     AF_LOGD("stop spend time is %lld", af_gettime_ms() - t1);
     return 0;
 }
@@ -2960,7 +2960,7 @@ int SuperMediaPlayer::setUpAudioDecoder(const Stream_meta *meta)
     }
 
     uint64_t flags = 0;
-    if (mDrmSessionManager != nullptr) {
+    if (mDrmManager != nullptr) {
         flags = DECFLAG_HW;
     } else {
         flags = DECFLAG_SW;
@@ -2974,7 +2974,7 @@ int SuperMediaPlayer::setUpAudioDecoder(const Stream_meta *meta)
         return ret;
     }
 
-    mAudioDecoder->setDrmSessionManager(mDrmSessionManager.get());
+    mAudioDecoder->setDrmSessionManager(mDrmManager.get());
     ret = mAudioDecoder->open(meta, nullptr, 0);
 
     if (ret < 0) {
@@ -3283,7 +3283,7 @@ int SuperMediaPlayer::CreateVideoDecoder(bool bHW, Stream_meta &meta)
         ProcessVideoHoldMsg(mAppStatus == APP_BACKGROUND);
     }
     
-    mVideoDecoder->setDrmSessionManager(mDrmSessionManager.get());
+    mVideoDecoder->setDrmSessionManager(mDrmManager.get());
     ret = mVideoDecoder->open(&meta, view, decFlag);
 
     if (ret < 0) {
@@ -4281,7 +4281,7 @@ int SuperMediaPlayer::initDrmSessionMangerIfNeed(const Stream_meta *meta) {
 
     if (!keyFormat.empty() && !keyUrl.empty()) {
 
-        if (mDrmSessionManager != nullptr) {
+        if (mDrmManager != nullptr) {
             return 0;
         }
 
@@ -4290,17 +4290,17 @@ int SuperMediaPlayer::initDrmSessionMangerIfNeed(const Stream_meta *meta) {
             return gen_framework_errno(error_class_drm, drm_error_unsupport_scheme);
         }
 
-        mDrmSessionManager = std::unique_ptr<IDrmSessionManager>(pSessionManager);
+        mDrmManager = std::unique_ptr<IDrmSessionManager>(pSessionManager);
 
-        bool support = mDrmSessionManager->supportDrm(meta->keyFormat);
+        bool support = mDrmManager->supportDrm(meta->keyFormat);
         if(!support) {
             AF_LOGE("drm not support");
-            mDrmSessionManager = nullptr;
+            mDrmManager = nullptr;
             return gen_framework_errno(error_class_drm, drm_error_unsupport_scheme);
         }
 
-        mDrmSessionManager->setDrmRequestCallback(mRequestProvisionCb, mRequestKeyCb,
-                                                  mRequestUserData);
+        mDrmManager->setDrmRequestCallback(mRequestProvisionCb, mRequestKeyCb,
+                                           mRequestUserData);
 
         const char *mime = "";
         if (meta->codec == AF_CODEC_ID_H264) {
@@ -4313,7 +4313,7 @@ int SuperMediaPlayer::initDrmSessionMangerIfNeed(const Stream_meta *meta) {
             AF_LOGW("drm not support codec : %d ", meta->codec);
         }
 
-        mDrmSessionManager->requireDrmSession(meta->keyUrl, meta->keyFormat, mime, "");
+        mDrmManager->requireDrmSession(meta->keyUrl, meta->keyFormat, mime, "");
 
         return 0;
     }

@@ -96,7 +96,7 @@ namespace Cicada {
         mPDecoder = nullptr;
     }
 
-    int avcodecDecoder::init_decoder(const Stream_meta *meta, void *wnd, uint64_t flags)
+    int avcodecDecoder::init_decoder(const Stream_meta *meta, void *wnd, uint64_t flags,std::map<std::string,std::string> drmInfo)
     {
         auto codecId = (enum AVCodecID) CodecID2AVCodecID(meta->codec);
         mPDecoder->codec = avcodec_find_decoder(codecId);
@@ -199,8 +199,12 @@ namespace Cicada {
         close();
     }
 
-    bool avcodecDecoder::is_supported(enum AFCodecID codec)
+    bool avcodecDecoder::is_supported(enum AFCodecID codec,std::map<std::string,std::string> drmInfo)
     {
+        if (!drmInfo.empty()) {
+            return false;
+        }
+
 //        return codec == AF_CODEC_ID_H264
 //               || codec == AF_CODEC_ID_MPEG4
 //               || codec == AF_CODEC_ID_HEVC

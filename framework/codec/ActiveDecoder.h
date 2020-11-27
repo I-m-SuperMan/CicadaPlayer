@@ -17,6 +17,7 @@
 #include <atomic>
 #include <base/media/spsc_queue.h>
 #include <queue>
+#include <map>
 
 class CICADA_CPLUS_EXTERN ActiveDecoder : public Cicada::IDecoder {
 
@@ -49,7 +50,7 @@ private:
 
     virtual int dequeue_decoder(std::unique_ptr<IAFFrame> &pFrame) = 0;
 
-    virtual int init_decoder(const Stream_meta *meta, void *wnd, uint64_t flags) = 0;
+    virtual int init_decoder(const Stream_meta *meta, void *wnd, uint64_t flags, std::map<std::string,std::string> drmInfo) = 0;
 
     virtual void close_decoder() = 0;
 

@@ -6,16 +6,17 @@
 #define CICADA_PLAYER_DECODERFACTORY_H
 
 #include <memory>
+#include <map>
 #include "IDecoder.h"
 
 class decoderFactory {
 
 public:
-    static std::unique_ptr<Cicada::IDecoder> create(const Stream_meta & meta, uint64_t flags, int maxSize);
+    static std::unique_ptr<Cicada::IDecoder> create(const Stream_meta & meta, uint64_t flags, int maxSize ,std::map<std::string,std::string> drmInfo);
 
 private:
 
-    static std::unique_ptr<Cicada::IDecoder> createBuildIn(const AFCodecID &codec, uint64_t flags);
+    static std::unique_ptr<Cicada::IDecoder> createBuildIn(const AFCodecID &codec, uint64_t flags,std::map<std::string,std::string> drmInfo);
 };
 
 
