@@ -9,7 +9,11 @@
 #include <utils/AFMediaType.h>
 #include <string>
 #include <mutex>
+#include <functional>
 #include <af_config.h>
+#include <base/media/IAFPacket.h>
+#include <drm/IDrmHandler.h>
+#include "IVideoFrame.h"
 
 enum decoder_status {
     got_pic,
@@ -38,10 +42,6 @@ typedef enum DECODER_FRAME_STATUS {
 #define STATUS_VT_DECODER_BACKGROUND  1 << decoder_background
 #define STATUS_CREATE_FAIL 1 << decoder_create_fail
 
-#include <base/media/IAFPacket.h>
-#include <drm/IDrmHandler.h>
-#include "IVideoFrame.h"
-#include "IDrmSessionManager.h"
 
 namespace Cicada {
 

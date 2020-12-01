@@ -27,7 +27,11 @@ ActiveDecoder::ActiveDecoder() : mInputQueue(MAX_INPUT_SIZE), mOutputQueue(MAX_O
 
 int ActiveDecoder::open(const Stream_meta *meta, void *voutObsr, uint64_t flags)
 {
-    int ret = init_decoder(meta, voutObsr, flags);
+    Cicada::DrmInfo drmInfo{};
+    drmInfo.uri = meta->keyUrl;
+    drmInfo.format = meta->keyFormat;
+
+    int ret = init_decoder(meta, voutObsr, flags , drmInfo);
 
     if (ret < 0) {
         close();

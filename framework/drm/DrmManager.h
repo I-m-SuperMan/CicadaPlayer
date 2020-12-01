@@ -5,9 +5,8 @@
 #ifndef SOURCE_DRMMANAGER_H
 #define SOURCE_DRMMANAGER_H
 
-#include <string>
-#include <vector>
 #include <mutex>
+#include <map>
 #include "IDrmHandler.h"
 #include "DrmInfo.h"
 
@@ -28,7 +27,7 @@ namespace Cicada {
 
     private:
         std::mutex mDrmMutex{};
-        std::map<DrmInfo, std::unique_ptr<IDrmHandler>> mDrmMap{};
+        std::map<DrmInfo, std::unique_ptr<IDrmHandler>  , DrmInfo::DrmInfoCompare> mDrmMap{};
         DrmCallback mDrmCallback{nullptr};
     };
 

@@ -5,6 +5,7 @@
 #include <utils/AFMediaType.h>
 #include <cacheModule/cache/CacheConfig.h>
 #include "native_cicada_player_def.h"
+#include <drm/IDrmHandler.h>
 
 //typedef struct Stream_meta_t Stream_meta;
 
@@ -285,7 +286,7 @@ void CicadaSetDefaultBandWidth(playerHandle *player, int bandWidth);
 
 int CicadaInvokeComponent(playerHandle *player, const char *content);
 
-void CicadaSetDrmRequestCallback(playerHandle *player, drmRequestCb provisionCb , drmRequestCb keyCb , void* userData);
+void CicadaSetDrmRequestCallback(playerHandle *player, const DrmCallback& drmCallback);
 
 std::string CicadaGetPlayerName(playerHandle *player);
 

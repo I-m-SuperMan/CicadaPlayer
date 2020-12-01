@@ -21,3 +21,12 @@ IDrmHandler *DrmHandlerPrototype::create(const DrmInfo &drmInfo) {
 
     return nullptr;
 }
+
+bool DrmHandlerPrototype::isSupport(const DrmInfo &drmInfo) {
+    for (int i = 0; i < _nextSlot; ++i) {
+        if (drmHandlerQueue[i]->is_supported(drmInfo)) {
+            return true;
+        }
+    }
+    return false;
+}

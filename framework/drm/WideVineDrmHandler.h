@@ -21,17 +21,15 @@ namespace Cicada {
 
         ~WideVineDrmHandler();
 
-        void open() override;
-
-        State getState() override;
-
-        int getResult(char **dst, int64_t *dstSize) override;
-
         IDrmHandler *clone(const DrmInfo &drmInfo) override;
 
         bool is_supported(const DrmInfo &drmInfo) override;
 
-        bool isForceInsecureDecoder();
+
+        void convertData(int naluLengthSize, uint8_t **new_data, int *new_size, const uint8_t *data,
+                         int size) override;
+
+        int initDecoder(void *pDecoder) override;
 
     public:
         static void init(JNIEnv *env);
@@ -63,15 +61,23 @@ namespace Cicada {
         static WideVineDrmHandler dummyWideVineHandler;
 
     private:
+
+        bool isForceInsecureDecoder();
+
+        void open();
+
+    private:
         jobject mJDrmSessionManger = nullptr;
 
         std::mutex mDrmMutex{};
 
-        void *mSessionId = nullptr;
-        int mSize{0};
+        char *mSessionId = nullptr;
+        int mSessionSize{0};
 
-        State mState{State::Idle};
+        int mState{SESSION_STATE_IDLE};
         int mErrorCode{0};
+
+        bool bSessionRequested{false};
     };
 }
 

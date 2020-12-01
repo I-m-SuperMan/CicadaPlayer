@@ -38,7 +38,7 @@ IDrmHandler *DrmManager::require(const DrmInfo &drmInfo) {
     }
 
     pDrmHandler->setDrmCallback(mDrmCallback);
-    mDrmMap[drmInfo] = (std::unique_ptr<IDrmHandler>(pDrmHandler));
+    mDrmMap[drmInfo] = std::unique_ptr<IDrmHandler>(pDrmHandler);
 
     return pDrmHandler;
 }

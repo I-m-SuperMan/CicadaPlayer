@@ -13,7 +13,7 @@ class decoderFactory {
 
 public:
     static std::unique_ptr<Cicada::IDecoder> create(const Stream_meta & meta, uint64_t flags, int maxSize ,
-                                                    const DrmInfo &drmInfo);
+                                                    const Cicada::DrmInfo &drmInfo);
 
 private:
 

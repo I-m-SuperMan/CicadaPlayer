@@ -12,16 +12,11 @@
 #include "DrmInfo.h"
 
 typedef std::function<std::map<std::string, std::string>(
-        std::map<std::string, std::string>)> DrmCallback;
+        const std::map<std::string, std::string>&)> DrmCallback;
 
 namespace Cicada {
     class IDrmHandler {
     public:
-        enum class State {
-            Error = -1,
-            Idle = 0,
-            Ready = 1
-        };
 
         IDrmHandler(const DrmInfo &drmInfo);
 
@@ -29,11 +24,15 @@ namespace Cicada {
             drmCallback = callback;
         }
 
-        virtual State getState() = 0;
+        virtual void
+        convertData(int naluLengthSize, uint8_t **new_data, int *new_size, const uint8_t *data,
+                    int size) {
 
-        virtual int getResult(char **dst, int64_t *dstSize) = 0;
+        };
 
-        virtual void open() = 0;
+        virtual int initDecoder(void *pDecoder) {
+            return 0;
+        };
 
     protected:
         DrmInfo drmInfo;

@@ -22,6 +22,7 @@ class AbrAlgoStrategy;
 #include <string>
 #include <utils/AFMediaType.h>
 #include <vector>
+#include <drm/IDrmHandler.h>
 
 #ifdef ANDROID
 
@@ -103,7 +104,7 @@ namespace Cicada {
         */
         void SetDataSourceChangedCallback(function<void(const string &)> urlChangedCallbak);
 
-        void setDrmRequestCallback(drmRequestCb provisionCb ,drmRequestCb keyCb , void* userData);
+        void setDrmRequestCallback(const DrmCallback& drmCallback);
 
         /*
          *select specific track info

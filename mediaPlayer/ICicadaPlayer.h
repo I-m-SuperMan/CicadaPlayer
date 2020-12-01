@@ -8,6 +8,7 @@
 #include <utils/AFMediaType.h>
 #include "native_cicada_player_def.h"
 #include <cacheModule/cache/CacheConfig.h>
+#include <drm/IDrmHandler.h>
 
 namespace Cicada{
     class IDemuxerFactory;
@@ -241,11 +242,7 @@ namespace Cicada {
             mCRArg = arg;
         }
 
-        virtual void setDrmRequestCallback(drmRequestCb provisionCb ,drmRequestCb keyCb , void* userData) {
-            mRequestProvisionCb = provisionCb;
-            mRequestKeyCb = keyCb;
-            mRequestUserData = userData;
-        }
+        virtual void setDrmRequestCallback(const DrmCallback &drmCallback) = 0;
 
         virtual int getCurrentStreamMeta(Stream_meta *meta, StreamType type) = 0;
 
@@ -277,10 +274,6 @@ namespace Cicada {
         void* mCRArg = nullptr;
 
         ErrorConverter *mErrorConverter = nullptr;
-
-        drmRequestCb mRequestProvisionCb = nullptr;
-        drmRequestCb mRequestKeyCb = nullptr;
-        void* mRequestUserData = nullptr;
     };
 
 }

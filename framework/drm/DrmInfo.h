@@ -13,15 +13,23 @@ namespace Cicada {
         std::string uri;
         std::string format;
 
-        bool operator==(const DrmInfo &drmInfo) {
+        bool operator==(const DrmInfo &drmInfo) const {
             return uri == drmInfo.uri &&
                    format == drmInfo.format;
         }
 
-        bool empty() {
+        bool empty() const {
             return uri.empty() &&
                    format.empty();
         }
+
+        struct DrmInfoCompare
+        {
+            bool operator() (const DrmInfo& lhs, const DrmInfo& rhs) const
+            {
+                return lhs.format < rhs.format || lhs.uri < rhs.uri;
+            }
+        };
     };
 }
 

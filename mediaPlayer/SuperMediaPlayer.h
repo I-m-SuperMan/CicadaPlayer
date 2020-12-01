@@ -18,7 +18,6 @@ using namespace std;
 
 #include "SMP_DCAManager.h"
 #include "SuperMediaPlayerDataSourceListener.h"
-#include "codec/videoDecoderFactory.h"
 #include "hls_adaptive_manager.h"
 #include "player_notifier.h"
 #include "player_types.h"
@@ -32,6 +31,7 @@ using namespace std;
 #include <cacheModule/CacheModule.h>
 #include <cacheModule/cache/CacheConfig.h>
 #include <drm/DrmManager.h>
+#include <codec/IDecoder.h>
 
 #ifdef __APPLE__
 
@@ -204,6 +204,8 @@ namespace Cicada {
 
         int invokeComponent(std::string content) override;
 
+        void setDrmRequestCallback(const DrmCallback &drmCallback) override;
+
     private:
         void NotifyPosition(int64_t position);
 
@@ -314,8 +316,6 @@ namespace Cicada {
         void notifyPreparedCallback();
 
         void updateVideoMeta();
-
-        int initDrmSessionMangerIfNeed(const Stream_meta *meta);
 
         class ApsaraAudioRenderCallback : public IAudioRenderListener {
         public:

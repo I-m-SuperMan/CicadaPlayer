@@ -2966,7 +2966,11 @@ int SuperMediaPlayer::setUpAudioDecoder(const Stream_meta *meta)
         flags = DECFLAG_SW;
     }
 
-    mAudioDecoder = decoderFactory::create(*meta, flags, 0);
+    DrmInfo drmInfo{};
+    drmInfo.uri = meta->keyUrl;
+    drmInfo.format = meta->keyFormat;
+
+    mAudioDecoder = decoderFactory::create(*meta, flags, 0, drmInfo);
 
     if (mAudioDecoder == nullptr) {
         ret = gen_framework_errno(error_class_codec, codec_error_audio_not_support);
@@ -2974,7 +2978,9 @@ int SuperMediaPlayer::setUpAudioDecoder(const Stream_meta *meta)
         return ret;
     }
 
-    mAudioDecoder->setDrmSessionManager(mDrmManager.get());
+    mAudioDecoder->setRequireDrmHandlerCallback([this](const DrmInfo& info) -> IDrmHandler* {
+       return  mDrmManager->require(info);
+    });
     ret = mAudioDecoder->open(meta, nullptr, 0);
 
     if (ret < 0) {
@@ -3011,13 +3017,6 @@ int SuperMediaPlayer::SetUpAudioPath()
         auto *avAFPacket = dynamic_cast<AVAFPacket *>(mAudioPacket.get());
         if(avAFPacket != nullptr) {
             meta->isAdts = isADTS(avAFPacket->ToAVPacket()) ? 1 : 0;
-        }
-
-        ret = initDrmSessionMangerIfNeed(meta);
-
-        if(ret < 0) {
-            mPNotifier->NotifyEvent(MEDIA_PLAYER_EVENT_VIDEO_CODEC_NOT_SUPPORT, framework_err2_string(ret));
-            return ret;
         }
 
         ret = setUpAudioDecoder(meta);
@@ -3141,13 +3140,6 @@ int SuperMediaPlayer::SetUpVideoPath()
         }
     }
 
-    ret = initDrmSessionMangerIfNeed(meta);
-
-    if(ret < 0) {
-        mPNotifier->NotifyEvent(MEDIA_PLAYER_EVENT_VIDEO_CODEC_NOT_SUPPORT, framework_err2_string(ret));
-        return ret;
-    }
-
     ret = CreateVideoDecoder(bHW, *meta);
 
     if (ret < 0) {
@@ -3236,9 +3228,13 @@ int SuperMediaPlayer::CreateVideoDecoder(bool bHW, Stream_meta &meta)
         decFlag |= DECFLAG_ADAPTIVE;
     }
 
+    DrmInfo drmInfo{};
+    drmInfo.uri = meta.keyUrl;
+    drmInfo.format = meta.keyFormat;
+
     {
         std::lock_guard<std::mutex> uMutex(mCreateMutex);
-        mVideoDecoder = decoderFactory::create(meta, decFlag, max(meta.height, meta.width));
+        mVideoDecoder = decoderFactory::create(meta, decFlag, max(meta.height, meta.width),drmInfo);
     }
 
     if (mVideoDecoder == nullptr) {
@@ -3282,8 +3278,11 @@ int SuperMediaPlayer::CreateVideoDecoder(bool bHW, Stream_meta &meta)
         std::lock_guard<std::mutex> lock(mAppStatusMutex);
         ProcessVideoHoldMsg(mAppStatus == APP_BACKGROUND);
     }
-    
-    mVideoDecoder->setDrmSessionManager(mDrmManager.get());
+
+    mVideoDecoder->setRequireDrmHandlerCallback([this](const DrmInfo& info) -> IDrmHandler* {
+        return  mDrmManager->require(info);
+    });
+
     ret = mVideoDecoder->open(&meta, view, decFlag);
 
     if (ret < 0) {
@@ -4275,47 +4274,6 @@ int SuperMediaPlayer::invokeComponent(std::string content)
     return mDcaManager->invoke(content);
 }
 
-int SuperMediaPlayer::initDrmSessionMangerIfNeed(const Stream_meta *meta) {
-    std::string keyFormat = meta->keyFormat == nullptr ? "" : meta->keyFormat;
-    std::string keyUrl = meta->keyUrl == nullptr ? "" : meta->keyUrl;
-
-    if (!keyFormat.empty() && !keyUrl.empty()) {
-
-        if (mDrmManager != nullptr) {
-            return 0;
-        }
-
-        IDrmSessionManager *pSessionManager = IDrmSessionManager::create();
-        if (pSessionManager == nullptr) {
-            return gen_framework_errno(error_class_drm, drm_error_unsupport_scheme);
-        }
-
-        mDrmManager = std::unique_ptr<IDrmSessionManager>(pSessionManager);
-
-        bool support = mDrmManager->supportDrm(meta->keyFormat);
-        if(!support) {
-            AF_LOGE("drm not support");
-            mDrmManager = nullptr;
-            return gen_framework_errno(error_class_drm, drm_error_unsupport_scheme);
-        }
-
-        mDrmManager->setDrmRequestCallback(mRequestProvisionCb, mRequestKeyCb,
-                                           mRequestUserData);
-
-        const char *mime = "";
-        if (meta->codec == AF_CODEC_ID_H264) {
-            mime = "video/avc";
-        } else if (meta->codec == AF_CODEC_ID_HEVC) {
-            mime = "video/hevc";
-        } else if (meta->codec == AF_CODEC_ID_AAC) {
-            mime = "audio/mp4a-latm";
-        } else {
-            AF_LOGW("drm not support codec : %d ", meta->codec);
-        }
-
-        mDrmManager->requireDrmSession(meta->keyUrl, meta->keyFormat, mime, "");
-
-        return 0;
-    }
-    return 0;
+void SuperMediaPlayer::setDrmRequestCallback(const DrmCallback &drmCallback) {
+    mDrmManager->setDrmCallback(drmCallback);
 }
