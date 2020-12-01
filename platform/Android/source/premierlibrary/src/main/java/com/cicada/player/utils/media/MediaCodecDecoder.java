@@ -5,7 +5,6 @@ import android.media.MediaCodecInfo;
 import android.media.MediaCrypto;
 import android.media.MediaFormat;
 import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.text.TextUtils;
 import android.view.Surface;
 
@@ -26,7 +25,6 @@ import static android.media.MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED;
 import static android.media.MediaCodec.INFO_OUTPUT_FORMAT_CHANGED;
 import static android.media.MediaCodec.INFO_TRY_AGAIN_LATER;
 
-@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 @NativeUsed
 public class MediaCodecDecoder {
     private static final String TAG = MediaCodecDecoder.class.getSimpleName();

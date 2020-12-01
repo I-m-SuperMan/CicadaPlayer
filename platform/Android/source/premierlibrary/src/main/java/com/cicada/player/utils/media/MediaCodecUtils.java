@@ -5,14 +5,9 @@ import android.media.MediaCodecList;
 import android.media.MediaFormat;
 import android.os.Build;
 
-import android.support.annotation.RequiresApi;
-
-import com.cicada.player.utils.Logger;
-
 import java.util.ArrayList;
 import java.util.List;
 
-@RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
 public class MediaCodecUtils {
 
     private static final String TAG = MediaCodecUtils.class.getSimpleName();

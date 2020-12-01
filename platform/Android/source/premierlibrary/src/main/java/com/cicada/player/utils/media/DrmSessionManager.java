@@ -1,7 +1,6 @@
 package com.cicada.player.utils.media;
 
 import android.annotation.SuppressLint;
-import android.media.DeniedByServerException;
 import android.media.MediaDrm;
 import android.media.NotProvisionedException;
 import android.media.ResourceBusyException;
@@ -10,9 +9,6 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.RequiresApi;
 import android.util.Base64;
 
 import com.cicada.player.utils.Logger;
@@ -24,7 +20,6 @@ import static android.media.MediaDrm.EVENT_KEY_REQUIRED;
 import static android.media.MediaDrm.EVENT_PROVISION_REQUIRED;
 
 @NativeUsed
-@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 public class DrmSessionManager {
 
     private static final String TAG = DrmSessionManager.class.getSimpleName();
@@ -303,6 +298,7 @@ public class DrmSessionManager {
         }
     }
 
+    @SuppressLint("ObsoleteSdkInt")
     @NativeUsed
     public static boolean supportDrm(String format) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR2) {
