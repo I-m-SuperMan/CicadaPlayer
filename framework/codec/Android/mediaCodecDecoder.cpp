@@ -42,8 +42,7 @@ namespace Cicada {
         delete mDecoder;
     }
 
-    bool mediaCodecDecoder::checkSupport(const Stream_meta &meta, uint64_t flags, int maxSize,
-                                         const Cicada::DrmInfo &drmInfo) {
+    bool mediaCodecDecoder::checkSupport(const Stream_meta &meta, uint64_t flags, int maxSize) {
         AFCodecID codec = meta.codec;
         if (codec != AF_CODEC_ID_H264 && codec != AF_CODEC_ID_HEVC
             && codec != AF_CODEC_ID_AAC) {
@@ -69,13 +68,6 @@ namespace Cicada {
             }
         }
 
-        bool drmSupport = drmInfo.format.empty() ||
-                          (drmInfo.format == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
-                           && DrmHandlerPrototype::isSupport(drmInfo));
-        if (!drmSupport) {
-            return false;
-        }
-
         return true;
     }
 
@@ -85,7 +77,8 @@ namespace Cicada {
             return -ENOSPC;
         }
 
-        if (!checkSupport(*meta, flags, max(meta->height, meta->width), drmInfo)) {
+        if (!checkSupport(*meta, flags, max(meta->height, meta->width)) ||
+             !is_drmSupport(drmInfo)) {
             return -ENOSPC;
         }
 
@@ -134,6 +127,7 @@ namespace Cicada {
                 return ret;
             }
         }
+
         return configDecoder();
     }
 

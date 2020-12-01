@@ -20,7 +20,7 @@
 #include <data_source/dataSourcePrototype.h>
 #include <utils/af_string.h>
 #include <drm/DrmInfo.h>
-#include <drm/DrmHandlerPrototype.h>
+#include <codec/codecPrototype.h>
 
 // TODO support active and no active mode
 
@@ -444,14 +444,14 @@ namespace Cicada {
                     drmInfo.format = item.keyFormat;
                     drmInfo.uri = item.keyUrl;
 
-                    if(DrmHandlerPrototype::isSupport(drmInfo)) {
-                        //need keep original data , no bsf.
-                        mergeVideoHeader = header_type::header_type_no_change;
-                        mergeAudioHeader = header_type::header_type_no_change;
+                    if(item.keyFormat.empty()) {
+                        //support if not drm
                         mCurrentEncryption = item;
                         break;
-                    } else if(item.keyFormat.empty()) {
-                        //support if not drm
+                    } else if(codecPrototype::isDrmSupport(drmInfo)) {
+                        //need keep original data
+                        mergeVideoHeader = header_type::header_type_no_change;
+                        mergeAudioHeader = header_type::header_type_no_change;
                         mCurrentEncryption = item;
                         break;
                     }
@@ -863,11 +863,13 @@ namespace Cicada {
         int ret = 0;
         mProtectedBuffer = mCurrentEncryption.method != SegmentEncryption::NONE;
 
-        DrmInfo drmInfo{};
-        drmInfo.uri = mCurrentEncryption.keyUrl;
-        drmInfo.format = mCurrentEncryption.keyFormat;
-        if (DrmHandlerPrototype::isSupport(drmInfo)) {
-            return 0;
+        if (!mCurrentEncryption.keyFormat.empty()) {
+            DrmInfo drmInfo{};
+            drmInfo.format = mCurrentEncryption.keyFormat;
+            drmInfo.uri = mCurrentEncryption.keyUrl;
+            if(codecPrototype::isDrmSupport(drmInfo)) {
+                return 0;
+            }
         }
 
         if (mCurrentEncryption.method == SegmentEncryption::AES_128 ||

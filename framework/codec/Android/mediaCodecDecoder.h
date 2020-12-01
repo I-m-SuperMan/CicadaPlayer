@@ -47,7 +47,7 @@ namespace Cicada{
         };
 
     private:
-        static bool checkSupport(const Stream_meta &meta, uint64_t flags, int maxSize, const Cicada::DrmInfo &drmInfo);
+        static bool checkSupport(const Stream_meta &meta, uint64_t flags, int maxSize);
 
         int setCSD(const Stream_meta *meta);
 
@@ -68,12 +68,20 @@ namespace Cicada{
             return new mediaCodecDecoder();
         };
 
-        bool is_supported(const Stream_meta &meta, uint64_t flags, int maxSize, const Cicada::DrmInfo &drmInfo) override
+        bool is_supported(const Stream_meta &meta, uint64_t flags, int maxSize) override
         {
             if (flags & DECFLAG_HW)
-                return checkSupport(meta, flags, maxSize, drmInfo);
+                return checkSupport(meta, flags, maxSize);
             return false;
         };
+
+        bool is_drmSupport(const Cicada::DrmInfo &drmInfo) override {
+            bool drmSupport = drmInfo.format.empty() ||
+                              (drmInfo.format == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
+                               && DrmHandlerPrototype::isSupport(drmInfo));
+            return drmSupport;
+        }
+
         static mediaCodecDecoder se;
 
     private:

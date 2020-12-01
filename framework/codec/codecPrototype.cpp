@@ -25,22 +25,28 @@ Cicada::IDecoder *codecPrototype::create(const Stream_meta &meta, uint64_t flags
         decFlags &= ~DECFLAG_SW;
 
         for (int i = 0; i < _nextSlot; ++i) {
-            if (codecQueue[i]->is_supported(meta, decFlags, maxSize ,drmInfo)) {
+            if (codecQueue[i]->is_supported(meta, decFlags, maxSize) &&
+            codecQueue[i]->is_drmSupport(drmInfo)) {
                 return codecQueue[i]->clone();
             }
         }
     }
 
     for (int i = 0; i < _nextSlot; ++i) {
-        if (codecQueue[i]->is_supported(meta, flags, maxSize, drmInfo)) {
+        if (codecQueue[i]->is_supported(meta, flags, maxSize) &&
+            codecQueue[i]->is_drmSupport(drmInfo)) {
             return codecQueue[i]->clone();
         }
     }
 
     return nullptr;
-//    for (auto item : codecQueue) {
-//        if (item->is_supported(bHW, code))
-//            return item->clone();
-//    }
-//    return nullptr;
+}
+
+bool codecPrototype::isDrmSupport(const Cicada::DrmInfo &drmInfo) {
+    for (int i = 0; i < _nextSlot; ++i) {
+        if (codecQueue[i]->is_drmSupport(drmInfo)) {
+            return true;
+        }
+    }
+    return false;
 }

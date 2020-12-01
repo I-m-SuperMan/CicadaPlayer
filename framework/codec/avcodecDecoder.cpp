@@ -200,12 +200,8 @@ namespace Cicada {
         close();
     }
 
-    bool avcodecDecoder::is_supported(enum AFCodecID codec, const DrmInfo &drmInfo)
+    bool avcodecDecoder::is_supported(enum AFCodecID codec)
     {
-        if (!drmInfo.empty()) {
-            return false;
-        }
-
 //        return codec == AF_CODEC_ID_H264
 //               || codec == AF_CODEC_ID_MPEG4
 //               || codec == AF_CODEC_ID_HEVC

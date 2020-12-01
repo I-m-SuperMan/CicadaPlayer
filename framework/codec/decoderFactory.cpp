@@ -46,7 +46,7 @@ unique_ptr<IDecoder> decoderFactory::createBuildIn(const AFCodecID &codec, uint6
 #ifdef __APPLE__
 #ifdef ENABLE_VTB_DECODER
 
-        if (AFVTBDecoder::is_supported(codec , drmInfo)) {
+        if (AFVTBDecoder::is_supported(codec)) {
             return unique_ptr<IDecoder>(new AFVTBDecoder());
         }
 

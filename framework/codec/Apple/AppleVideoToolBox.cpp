@@ -46,7 +46,7 @@ namespace Cicada {
 #endif
     }
 
-    bool AFVTBDecoder::is_supported(enum AFCodecID codec , const DrmInfo& drmInfo)
+    bool AFVTBDecoder::is_supported(enum AFCodecID codec)
     {
         if (codec != AF_CODEC_ID_H264 && codec != AF_CODEC_ID_HEVC) {
             return false;
