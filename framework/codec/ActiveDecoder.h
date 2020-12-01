@@ -27,7 +27,7 @@ public:
 
     virtual ~ActiveDecoder() override;
 
-    int open(const Stream_meta *meta, void *voutObsr, uint64_t flags) override;
+    int open(const Stream_meta *meta, void *voutObsr, uint64_t flags, const Cicada::DrmInfo& drmInfo) override;
 
     void close() override;
 

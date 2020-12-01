@@ -107,7 +107,6 @@ namespace Cicada {
             return -ENOSPC;
         }
 
-
         if (codecType == CODEC_VIDEO) {
             mMetaVideoWidth = meta->width;
             mMetaVideoHeight = meta->height;

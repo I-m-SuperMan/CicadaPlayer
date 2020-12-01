@@ -2984,7 +2984,7 @@ int SuperMediaPlayer::setUpAudioDecoder(const Stream_meta *meta)
     mAudioDecoder->setRequireDrmHandlerCallback([this](const DrmInfo& info) -> DrmHandler* {
        return  mDrmManager->require(info);
     });
-    ret = mAudioDecoder->open(meta, nullptr, 0);
+    ret = mAudioDecoder->open(meta, nullptr, 0, drmInfo);
 
     if (ret < 0) {
         AF_LOGE("mAudioDecoder init error %d\n", ret);
@@ -3286,7 +3286,7 @@ int SuperMediaPlayer::CreateVideoDecoder(bool bHW, Stream_meta &meta)
         return  mDrmManager->require(info);
     });
 
-    ret = mVideoDecoder->open(&meta, view, decFlag);
+    ret = mVideoDecoder->open(&meta, view, decFlag, drmInfo);
 
     if (ret < 0) {
         AF_LOGE("config decoder error ret= %d \n", ret);
