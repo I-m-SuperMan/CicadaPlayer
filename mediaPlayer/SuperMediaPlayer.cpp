@@ -2981,7 +2981,7 @@ int SuperMediaPlayer::setUpAudioDecoder(const Stream_meta *meta)
         return ret;
     }
 
-    mAudioDecoder->setRequireDrmHandlerCallback([this](const DrmInfo& info) -> IDrmHandler* {
+    mAudioDecoder->setRequireDrmHandlerCallback([this](const DrmInfo& info) -> DrmHandler* {
        return  mDrmManager->require(info);
     });
     ret = mAudioDecoder->open(meta, nullptr, 0);
@@ -3282,7 +3282,7 @@ int SuperMediaPlayer::CreateVideoDecoder(bool bHW, Stream_meta &meta)
         ProcessVideoHoldMsg(mAppStatus == APP_BACKGROUND);
     }
 
-    mVideoDecoder->setRequireDrmHandlerCallback([this](const DrmInfo& info) -> IDrmHandler* {
+    mVideoDecoder->setRequireDrmHandlerCallback([this](const DrmInfo& info) -> DrmHandler* {
         return  mDrmManager->require(info);
     });
 

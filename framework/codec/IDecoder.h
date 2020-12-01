@@ -12,7 +12,7 @@
 #include <functional>
 #include <af_config.h>
 #include <base/media/IAFPacket.h>
-#include <drm/IDrmHandler.h>
+#include <drm/DrmHandler.h>
 #include "IVideoFrame.h"
 
 enum decoder_status {
@@ -161,7 +161,7 @@ namespace Cicada {
 
         virtual uint32_t getInputPaddingSize() = 0;
 
-        void setRequireDrmHandlerCallback(std::function<IDrmHandler*(const DrmInfo& drmInfo)> callback){
+        void setRequireDrmHandlerCallback(std::function<DrmHandler*(const DrmInfo& drmInfo)> callback){
             mRequireDrmHandlerCallback  = callback;
         }
 
@@ -176,7 +176,7 @@ namespace Cicada {
         bool bNeedKeyFrame{true};
         int64_t keyPts = INT64_MIN;
 
-        std::function<IDrmHandler*(const DrmInfo& drmInfo)> mRequireDrmHandlerCallback{nullptr};
+        std::function<DrmHandler*(const DrmInfo& drmInfo)> mRequireDrmHandlerCallback{nullptr};
     };
 }
 

@@ -2,8 +2,8 @@
 // Created by SuperMan on 11/27/20.
 //
 
-#ifndef SOURCE_IDRMHANDLER_H
-#define SOURCE_IDRMHANDLER_H
+#ifndef SOURCE_DRMHANDLER_H
+#define SOURCE_DRMHANDLER_H
 
 #include <cstdint>
 #include <string>
@@ -15,24 +15,14 @@ typedef std::function<std::map<std::string, std::string>(
         const std::map<std::string, std::string>&)> DrmCallback;
 
 namespace Cicada {
-    class IDrmHandler {
+    class DrmHandler {
     public:
 
-        IDrmHandler(const DrmInfo &drmInfo);
+        DrmHandler(const DrmInfo &drmInfo);
 
         void setDrmCallback(const DrmCallback &callback) {
             drmCallback = callback;
         }
-
-        virtual void
-        convertData(int naluLengthSize, uint8_t **new_data, int *new_size, const uint8_t *data,
-                    int size) {
-
-        };
-
-        virtual int initDecoder(void *pDecoder) {
-            return 0;
-        };
 
         virtual bool isErrorState() {
             return false;
@@ -47,4 +37,4 @@ namespace Cicada {
 }
 
 
-#endif //SOURCE_IDRMHANDLER_H
+#endif //SOURCE_DRMHANDLER_H

@@ -16,9 +16,9 @@ DrmManager::~DrmManager() {
     mDrmMap.clear();
 }
 
-IDrmHandler *DrmManager::require(const DrmInfo &drmInfo) {
+DrmHandler *DrmManager::require(const DrmInfo &drmInfo) {
 
-    std::unique_lock<std::mutex> drmLock(mDrmMutex);
+    std::lock_guard<std::mutex> drmLock(mDrmMutex);
 
     if (!mDrmMap.empty()) {
         for (auto &item : mDrmMap) {
@@ -29,7 +29,7 @@ IDrmHandler *DrmManager::require(const DrmInfo &drmInfo) {
         }
     }
 
-    IDrmHandler *pDrmHandler = DrmHandlerPrototype::create(drmInfo);
+    DrmHandler *pDrmHandler = DrmHandlerPrototype::create(drmInfo);
 
     assert(pDrmHandler != nullptr);
 
@@ -38,17 +38,17 @@ IDrmHandler *DrmManager::require(const DrmInfo &drmInfo) {
     }
 
     pDrmHandler->setDrmCallback(mDrmCallback);
-    mDrmMap[drmInfo] = std::unique_ptr<IDrmHandler>(pDrmHandler);
+    mDrmMap[drmInfo] = std::unique_ptr<DrmHandler>(pDrmHandler);
 
     return pDrmHandler;
 }
 
 void DrmManager::clearErrorItems() {
-    std::unique_lock<std::mutex> drmLock(mDrmMutex);
+    std::lock_guard<std::mutex> drmLock(mDrmMutex);
 
     if (!mDrmMap.empty()) {
         for (auto iter = mDrmMap.begin(); iter != mDrmMap.end();) {
-            IDrmHandler *handler = iter->second.get();
+            DrmHandler *handler = iter->second.get();
             if (handler->isErrorState()) {
                 iter = mDrmMap.erase(iter);
             } else {

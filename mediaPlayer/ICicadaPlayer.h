@@ -8,7 +8,7 @@
 #include <utils/AFMediaType.h>
 #include "native_cicada_player_def.h"
 #include <cacheModule/cache/CacheConfig.h>
-#include <drm/IDrmHandler.h>
+#include <drm/DrmHandler.h>
 
 namespace Cicada{
     class IDemuxerFactory;

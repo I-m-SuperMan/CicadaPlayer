@@ -9,6 +9,7 @@
 #include <utils/ffmpeg_utils.h>
 #include <utils/VideoExtraDataParser.h>
 #include <drm/DrmHandlerPrototype.h>
+#include <drm/WideVineDrmHandler.h>
 
 extern "C" {
 #include <libavutil/intreadwrite.h>
@@ -120,23 +121,21 @@ namespace Cicada {
         lock_guard<recursive_mutex> func_entry_lock(mFuncEntryMutex);
         setCSD(meta);
 
-        if(mRequireDrmHandlerCallback != nullptr) {
-            mDrmHandler = mRequireDrmHandlerCallback(drmInfo);
-        }
+        if (!drmInfo.format.empty()) {
+            if (mRequireDrmHandlerCallback != nullptr) {
+                mDrmHandler = dynamic_cast<WideVineDrmHandler *>(mRequireDrmHandlerCallback(
+                        drmInfo));
+                assert(mDrmHandler != nullptr);
+            }
 
-        if (mDrmHandler != nullptr) {
-            int ret = mDrmHandler->initDecoder(this);
-
-            if (ret == 0) {
-                return configDecoder();
-            } else if (ret == -EAGAIN) {
+            int ret = initDrmHandler();
+            if (ret == -EAGAIN) {
                 return 0;
-            } else {
+            } else if (ret < 0) {
                 return ret;
             }
-        } else {
-            return configDecoder();
         }
+        return configDecoder();
     }
 
     int mediaCodecDecoder::setCSD(const Stream_meta *meta) {
@@ -289,18 +288,17 @@ namespace Cicada {
     int mediaCodecDecoder::enqueue_decoder(unique_ptr<IAFPacket> &pPacket) {
 
         if (!mbInit && mDrmHandler != nullptr) {
-            int ret = mDrmHandler->initDecoder(this);
-            if (ret == 0) {
+            int ret = initDrmHandler();
+            if (ret == -EAGAIN) {
+                return -EAGAIN;
+            } else if (ret < 0) {
+                return ret;
+            } else if (ret == 0) {
                 ret = configDecoder();
 
                 if (ret < 0) {
                     return ret;
                 }
-
-            } else if (ret == -EAGAIN) {
-                return -EAGAIN;
-            } else {
-                return ret;
             }
         }
 
@@ -528,14 +526,25 @@ namespace Cicada {
         return ret;
     }
 
-    void mediaCodecDecoder::setWideVineSession(const std::string &uuid, char *sessionId,
-                                               int sessionSize) {
-        mDecoder->setDrmInfo(uuid, sessionId, sessionSize);
+    int mediaCodecDecoder::initDrmHandler() {
+
+        mDrmHandler->open();
+
+        int state = mDrmHandler->getState();
+        if (state == SESSION_STATE_OPENED) {
+            bool insecure = mDrmHandler->isForceInsecureDecoder();
+            mDecoder->setForceInsecureDecoder(insecure);
+
+            char *sessionId = nullptr;
+            int sessionSize = mDrmHandler->getSessionId(&sessionId);
+            mDecoder->setDrmInfo("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed", sessionId,
+                                 sessionSize);
+            return 0;
+        } else if (state == SESSION_STATE_IDLE) {
+            return -EAGAIN;
+        } else if (state == SESSION_STATE_ERROR) {
+            return mDrmHandler->getErrorCode();
+        }
+        return -EAGAIN;
     }
-
-    void mediaCodecDecoder::setWideVineForceInSecureDecoder(bool insecure) {
-        mDecoder->setForceInsecureDecoder(insecure);
-    }
-
-
 }

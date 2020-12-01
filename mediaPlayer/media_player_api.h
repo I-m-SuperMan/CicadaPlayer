@@ -5,7 +5,7 @@
 #include <utils/AFMediaType.h>
 #include <cacheModule/cache/CacheConfig.h>
 #include "native_cicada_player_def.h"
-#include <drm/IDrmHandler.h>
+#include <drm/DrmHandler.h>
 
 //typedef struct Stream_meta_t Stream_meta;
 

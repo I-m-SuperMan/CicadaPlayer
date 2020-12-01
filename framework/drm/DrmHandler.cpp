@@ -2,10 +2,10 @@
 // Created by SuperMan on 11/27/20.
 //
 
-#include "IDrmHandler.h"
+#include "DrmHandler.h"
 
 using namespace Cicada;
 
-IDrmHandler::IDrmHandler(const DrmInfo &drmInfo) {
+DrmHandler::DrmHandler(const DrmInfo &drmInfo) {
     this->drmInfo = drmInfo;
 }

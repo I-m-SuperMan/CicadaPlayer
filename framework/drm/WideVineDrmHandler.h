@@ -7,7 +7,7 @@
 
 #include <jni.h>
 #include <mutex>
-#include "IDrmHandler.h"
+#include "DrmHandler.h"
 #include "DrmHandlerPrototype.h"
 
 #define SESSION_STATE_ERROR (-1)
@@ -15,24 +15,32 @@
 #define SESSION_STATE_OPENED (0)
 
 namespace Cicada {
-    class WideVineDrmHandler : public IDrmHandler, private DrmHandlerPrototype {
+    class WideVineDrmHandler : public DrmHandler, private DrmHandlerPrototype {
     public:
         WideVineDrmHandler(const DrmInfo &drmInfo);
 
         ~WideVineDrmHandler();
 
-        IDrmHandler *clone(const DrmInfo &drmInfo) override;
+        DrmHandler *clone(const DrmInfo &drmInfo) override;
 
         bool is_supported(const DrmInfo &drmInfo) override;
 
-
-        void convertData(int naluLengthSize, uint8_t **new_data, int *new_size, const uint8_t *data,
-                         int size) override;
-
-        int initDecoder(void *pDecoder) override;
-
         bool isErrorState() override;
 
+    public:
+        int getState();
+
+        int getErrorCode();
+
+        bool isForceInsecureDecoder();
+
+        void open();
+
+        int getSessionId(char** sessionId);
+
+        static void convertData(int naluLengthSize, uint8_t **new_data, int *new_size,
+                                             const uint8_t *data,
+                                             int size);
     public:
         static void init(JNIEnv *env);
 
@@ -56,17 +64,11 @@ namespace Cicada {
 
     protected:
         explicit WideVineDrmHandler(int dummy)
-                : IDrmHandler(DrmInfo{}) {
+                : DrmHandler(DrmInfo{}) {
             addPrototype(this);
         }
 
         static WideVineDrmHandler dummyWideVineHandler;
-
-    private:
-
-        bool isForceInsecureDecoder();
-
-        void open();
 
     private:
         jobject mJDrmSessionManger = nullptr;

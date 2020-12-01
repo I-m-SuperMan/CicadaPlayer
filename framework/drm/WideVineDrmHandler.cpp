@@ -14,7 +14,6 @@
 #include <utils/Android/NewByteArray.h>
 #include <utils/CicadaUtils.h>
 #include <cassert>
-#include <codec/Android/IWideVineDecoder.h>
 
 extern "C" {
 #include <utils/errors/framework_error.h>
@@ -31,7 +30,7 @@ using namespace Cicada;
 WideVineDrmHandler WideVineDrmHandler::dummyWideVineHandler(0);
 
 WideVineDrmHandler::WideVineDrmHandler(const DrmInfo &drmInfo)
-        : IDrmHandler(drmInfo) {
+        : DrmHandler(drmInfo) {
     JniEnv jniEnv{};
 
     JNIEnv *env = jniEnv.getEnv();
@@ -74,7 +73,7 @@ void WideVineDrmHandler::open() {
     }
 
     {
-        std::unique_lock<std::mutex> lock(mDrmMutex);
+        std::lock_guard<std::mutex> lock(mDrmMutex);
         if (bSessionRequested) {
             return;
         } else {
@@ -94,11 +93,11 @@ void WideVineDrmHandler::open() {
 
 
 bool WideVineDrmHandler::isErrorState() {
-    std::unique_lock<std::mutex> lock(mDrmMutex);
+    std::lock_guard<std::mutex> lock(mDrmMutex);
     return mState == SESSION_STATE_ERROR;
 }
 
-IDrmHandler *
+DrmHandler *
 WideVineDrmHandler::clone(const DrmInfo &drmInfo) {
     return new WideVineDrmHandler(drmInfo);
 }
@@ -184,7 +183,7 @@ void WideVineDrmHandler::updateSessionId(JNIEnv *env, jobject instance, jlong na
     }
 
     {
-        std::unique_lock<std::mutex> lock(drmSessionManager->mDrmMutex);
+        std::lock_guard<std::mutex> lock(drmSessionManager->mDrmMutex);
         drmSessionManager->mSessionSize = env->GetArrayLength(jSessionId);;
         drmSessionManager->mSessionId = JniUtils::jByteArrayToChars(env, jSessionId);
     }
@@ -199,7 +198,7 @@ void WideVineDrmHandler::changeState(JNIEnv *env, jobject instance, jlong native
     }
 
     {
-        std::unique_lock<std::mutex> lock(drmSessionManager->mDrmMutex);
+        std::lock_guard<std::mutex> lock(drmSessionManager->mDrmMutex);
 
         if (state == 0) {
             drmSessionManager->mState = SESSION_STATE_OPENED;
@@ -305,28 +304,20 @@ WideVineDrmHandler::requestKey(JNIEnv *env, jobject instance, jlong nativeIntanc
     }
 }
 
-int WideVineDrmHandler::initDecoder(void *pDecoder) {
+int WideVineDrmHandler::getState() {
+    std::lock_guard<std::mutex> lock(mDrmMutex);
+    return mState;
+}
 
-    auto *wideVineDecoder = static_cast<IWideVineDecoder *>(pDecoder);
-    if (wideVineDecoder == nullptr) {
-        return -1;
-    }
+int WideVineDrmHandler::getSessionId(char **session) {
+    std::lock_guard<std::mutex> lock(mDrmMutex);
+    *session = mSessionId;
+    return mSessionSize;
+}
 
-    open();
-
-    std::unique_lock<std::mutex> lock(mDrmMutex);
-    if (mState == SESSION_STATE_OPENED) {
-        bool insecure = isForceInsecureDecoder();
-        wideVineDecoder->setWideVineForceInSecureDecoder(insecure);
-        wideVineDecoder->setWideVineSession("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed", mSessionId,
-                                            mSessionSize);
-        return 0;
-    } else if (mState == SESSION_STATE_IDLE) {
-        return -EAGAIN;
-    } else if (mState == SESSION_STATE_ERROR) {
-        return mErrorCode;
-    }
-    return -EAGAIN;
+int WideVineDrmHandler::getErrorCode() {
+    std::lock_guard<std::mutex> lock(mDrmMutex);
+    return mErrorCode;
 }
 
 void WideVineDrmHandler::convertData(int naluLengthSize, uint8_t **new_data, int *new_size,
@@ -350,8 +341,6 @@ void WideVineDrmHandler::convertData(int naluLengthSize, uint8_t **new_data, int
 
     int sampleBytesWritten = 0;
     int sampleSize = size;
-
-    std::vector<uint8_t> tmpData{};
 
     int nalUnitPrefixLength = naluLengthSize + 1;
     int nalUnitLengthFieldLengthDiff = 4 - naluLengthSize;

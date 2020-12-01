@@ -22,7 +22,7 @@ class AbrAlgoStrategy;
 #include <string>
 #include <utils/AFMediaType.h>
 #include <vector>
-#include <drm/IDrmHandler.h>
+#include <drm/DrmHandler.h>
 
 #ifdef ANDROID
 

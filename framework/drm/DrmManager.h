@@ -7,7 +7,7 @@
 
 #include <mutex>
 #include <map>
-#include "IDrmHandler.h"
+#include "DrmHandler.h"
 #include "DrmInfo.h"
 
 namespace Cicada {
@@ -23,13 +23,13 @@ namespace Cicada {
             mDrmCallback = callback;
         }
 
-        IDrmHandler *require(const DrmInfo &drmInfo);
+        DrmHandler *require(const DrmInfo &drmInfo);
 
         void clearErrorItems();
 
     private:
         std::mutex mDrmMutex{};
-        std::map<DrmInfo, std::unique_ptr<IDrmHandler>  , DrmInfo::DrmInfoCompare> mDrmMap{};
+        std::map<DrmInfo, std::unique_ptr<DrmHandler>  , DrmInfo::DrmInfoCompare> mDrmMap{};
         DrmCallback mDrmCallback{nullptr};
     };
 

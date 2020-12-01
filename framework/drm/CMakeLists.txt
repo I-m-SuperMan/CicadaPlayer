@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD 11)
 set(SOURCE_FILES
         DrmInfo.cpp
         DrmManager.cpp
-        IDrmHandler.cpp
+        DrmHandler.cpp
         DrmHandlerPrototype.cpp
         )
 
