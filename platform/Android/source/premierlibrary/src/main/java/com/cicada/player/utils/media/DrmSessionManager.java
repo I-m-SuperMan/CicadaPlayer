@@ -3,7 +3,6 @@ package com.cicada.player.utils.media;
 import android.annotation.SuppressLint;
 import android.media.MediaDrm;
 import android.media.NotProvisionedException;
-import android.media.ResourceBusyException;
 import android.media.UnsupportedSchemeException;
 import android.os.Build;
 import android.os.Handler;
@@ -153,7 +152,7 @@ public class DrmSessionManager {
                     changeState(SESSION_STATE_ERROR, ERROR_CODE_PROVISION_FAIL);
                 }
                 return false;
-            } catch (ResourceBusyException e) {
+            } catch (Exception e) {
                 Logger.e(TAG, " prepare fail : " + e.getMessage());
                 changeState(SESSION_STATE_ERROR, ERROR_CODE_RESOURCE_BUSY);
                 return false;
