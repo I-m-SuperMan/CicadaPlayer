@@ -22,6 +22,7 @@
 #include <utils/CicadaJSON.h>
 #include <utils/Android/NewByteArray.h>
 #include <utils/Android/JniUtils.h>
+#include <utils/CicadaUtils.h>
 
 
 #include "NativeBase.h"
@@ -106,7 +107,72 @@ void NativeBase::java_Construct(JNIEnv *env, jobject instance , jstring name)
     listener.SubtitleExtAdd = jni_onSubTitleExtAdd;
     auto *apsaraPlayer = privateData->player;
     apsaraPlayer->SetListener(listener);
-    apsaraPlayer->setDrmRequestCallback(onRequestProvisionCallback ,onRequestKeyCallback , userData);
+    apsaraPlayer->setDrmRequestCallback([userData](const map<string, string> &requestParam) -> map<string, string> {
+
+        if (requestParam.count("drmType") == 0) {
+            return std::map<string, string>{};
+        }
+
+        const string &drmType = requestParam.at("drmType");
+        if (drmType == "WideVine") {
+
+            string requestType{};
+            if (requestParam.count("requestType") > 0) {
+                requestType = requestParam.at("requestType");
+            }
+
+            if (requestType == "key") {
+                string url{};
+                if (requestParam.count("url") > 0) {
+                    url = requestParam.at("url");
+                }
+                string data{};
+                if (requestParam.count("data") > 0) {
+                    data = requestParam.at("data");
+                }
+
+                char *requestData = nullptr;
+                int requestDataSize = CicadaUtils::base64dec(data, &requestData);
+
+                char *responseData = nullptr;
+                int responseSize = 0;
+                onRequestKeyCallback(&responseData,&responseSize ,url.c_str(), requestData,
+                                requestDataSize, userData);
+                std::map<string,string> result{};
+                if(responseData != nullptr && responseSize > 0){
+                    result["responseData"] = CicadaUtils::base64enc(responseData,responseSize);
+                }
+                return result;
+
+            } else if(requestType == "provision") {
+                string url{};
+                if (requestParam.count("url") > 0) {
+                    url = requestParam.at("url");
+                }
+                string data{};
+                if (requestParam.count("data") > 0) {
+                    data = requestParam.at("data");
+                }
+
+                char *requestData = nullptr;
+                int requestDataSize = CicadaUtils::base64dec(data, &requestData);
+
+                char *responseData = nullptr;
+                int responseSize = 0;
+                onRequestProvisionCallback(&responseData, &responseSize , url.c_str(), requestData,
+                                      requestDataSize , userData);
+
+                std::map<string,string> result{};
+                if(responseData != nullptr && responseSize > 0){
+                    result["responseData"] = CicadaUtils::base64enc(responseData,responseSize);
+                }
+                return result;
+            }
+
+        }
+
+        return std::map<string, string>{};
+    });
 }
 
 void NativeBase::java_SetConnectivityManager(JNIEnv *env, jobject instance, jobject connectManager)
@@ -884,7 +950,7 @@ void NativeBase::java_SetVideoBackgroundColor(JNIEnv *env, jobject instance, jin
 //callback...
 
 
- void NativeBase::onRequestProvisionCallback(void**responseData, int* responseSize, const char* url, const char *data, int size , void *userData){
+ void NativeBase::onRequestProvisionCallback(char**responseData, int* responseSize, const char* url, const char *data, int size , void *userData){
      if (userData == nullptr) {
          return;
      }
@@ -911,7 +977,7 @@ void NativeBase::java_SetVideoBackgroundColor(JNIEnv *env, jobject instance, jin
      JniException::clearException(mEnv);
 
 }
- void NativeBase::onRequestKeyCallback(void**responseData, int* responseSize, const char* url, const char *data, int size , void *userData){
+ void NativeBase::onRequestKeyCallback(char**responseData, int* responseSize, const char* url, const char *data, int size , void *userData){
      if (userData == nullptr) {
          return;
      }

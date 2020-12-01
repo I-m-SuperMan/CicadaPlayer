@@ -218,6 +218,10 @@ public:
     int invokeComponent(std::string content) override;
 
     void SetAudioRenderingCallBack(onRenderFrame cb, void *userData) override ;
+
+    void setDrmRequestCallback(const DrmCallback &drmCallback) override{
+
+    } ;
 public:
     static bool is_supported(const Cicada::options *opts);
 

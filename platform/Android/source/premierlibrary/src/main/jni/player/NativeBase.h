@@ -149,9 +149,9 @@ public:
     static void java_SetDefaultBandWidth(JNIEnv *env , jobject instance , jint defaultBandWidth);
 public:
 
-    static void onRequestProvisionCallback(void**responseData, int* responseSize, const char* url, const char *data, int size , void *arg);
+    static void onRequestProvisionCallback(char**responseData, int* responseSize, const char* url, const char *data, int size , void *arg);
 
-    static void onRequestKeyCallback(void**responseData, int* responseSize, const char* url, const char *data, int size , void *arg);
+    static void onRequestKeyCallback(char**responseData, int* responseSize, const char* url, const char *data, int size , void *arg);
 
     static void jni_onError(int64_t code, const void *msg, /*void *extra, */void *userData);
 

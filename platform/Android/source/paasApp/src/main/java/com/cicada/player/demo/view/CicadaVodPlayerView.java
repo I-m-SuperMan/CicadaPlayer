@@ -1102,8 +1102,8 @@ public class CicadaVodPlayerView extends FrameLayout {
      * 初始化播放器
      */
     private void initCicadaPlayer() {
-        Logger.enableConsoleLog(true);
-        Logger.setLogLevel(Logger.LogLevel.AF_LOG_LEVEL_TRACE);
+        Logger.getInstance(getContext()).enableConsoleLog(true);
+        Logger.getInstance(getContext()).setLogLevel(Logger.LogLevel.AF_LOG_LEVEL_TRACE);
         boolean selectedCicadaPlayer = SharedPreferenceUtils.getBooleanExtra(SharedPreferenceUtils.SELECTED_CICADA_PLAYER);
         if(selectedCicadaPlayer){
             mCicadaVodPlayer = CicadaPlayerFactory.createCicadaPlayer(getContext().getApplicationContext());
@@ -1990,7 +1990,7 @@ public class CicadaVodPlayerView extends FrameLayout {
      * 开启底层日志
      */
     public void enableNativeLog() {
-       Logger.enableConsoleLog(true);
+        Logger.getInstance(getContext()).enableConsoleLog(true);
     }
 
 
@@ -1998,7 +1998,7 @@ public class CicadaVodPlayerView extends FrameLayout {
      * 关闭底层日志
      */
     public void disableNativeLog() {
-        Logger.enableConsoleLog(false);
+        Logger.getInstance(getContext()).enableConsoleLog(false);
     }
 
     /**

@@ -4,6 +4,7 @@ import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaFormat;
 import android.os.Build;
+
 import android.support.annotation.RequiresApi;
 
 import com.cicada.player.utils.Logger;
@@ -34,20 +35,20 @@ public class MediaCodecUtils {
 
             String codecMimeType = getCodecMimeType(mediaCodecInfo, mime);
             if (codecMimeType == null) {
-                Logger.v(TAG, mediaCodecInfo.getName() + " not support mime : " + mime);
+//                Logger.v(TAG, mediaCodecInfo.getName() + " not support mime : " + mime);
                 continue;
             }
 
             MediaCodecInfo.CodecCapabilities capabilities = mediaCodecInfo.getCapabilitiesForType(codecMimeType);
             boolean secureMatch = isSecureSupport(secure, capabilities, codecMimeType);
             if (!secureMatch) {
-                Logger.v(TAG, mediaCodecInfo.getName() + " not support secure : " + secure);
+//                Logger.v(TAG, mediaCodecInfo.getName() + " not support secure : " + secure);
                 continue;
             }
 
             boolean formatSupport = isFormatSupport(format, capabilities, codecMimeType);
             if (!formatSupport) {
-                Logger.v(TAG, mediaCodecInfo.getName() + " not support format : " + format);
+//                Logger.v(TAG, mediaCodecInfo.getName() + " not support format : " + format);
                 continue;
             }
 
@@ -178,7 +179,7 @@ public class MediaCodecUtils {
     }
 
     private static String getCodecMimeType(
-            android.media.MediaCodecInfo info,
+            MediaCodecInfo info,
             String mimeType) {
         String[] supportedTypes = info.getSupportedTypes();
         for (String supportedType : supportedTypes) {

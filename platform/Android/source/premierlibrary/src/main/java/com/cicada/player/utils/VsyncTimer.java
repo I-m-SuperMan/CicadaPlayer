@@ -5,7 +5,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.support.annotation.RequiresApi;
-import android.util.Log;
 import android.view.Choreographer;
 
 @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)

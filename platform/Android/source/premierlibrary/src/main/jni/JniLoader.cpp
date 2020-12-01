@@ -8,10 +8,10 @@
 #include <render/video/glRender/platform/android/decoder_surface.h>
 #include <utils/Android/JniEnv.h>
 #include <data_source/ContentDataSource.h>
-#include <codec/Android/MediaCodec_Decoder.h>
-#include <codec/Android/OutputBufferInfo.h>
-#include <codec/Android/JEncryptionInfo.h>
-#include <codec/Android/AndroidDrmSessionManager.h>
+#include <drm/WideVineDrmHandler.h>
+#include <codec/Android/jni/JEncryptionInfo.h>
+#include <codec/Android/jni/OutputBufferInfo.h>
+#include <codec/Android/jni/MediaCodec_Decoder.h>
 #include "player/JavaOptions.h"
 #include "player/JavaExternalPlayer.h"
 #include "utils/JavaLogger.h"
@@ -39,7 +39,7 @@ int initJavaInfo(JNIEnv *env)
     JavaExternalPlayer::init(env);
     ContentDataSource::init();
     MediaCodec_Decoder::init(env);
-    AndroidDrmSessionManager::init(env);
+    WideVineDrmHandler::init(env);
     OutputBufferInfo::init(env);
     JEncryptionInfo::init(env);
 
@@ -67,7 +67,7 @@ int initJavaInfo(JNIEnv *env)
         return JNI_FALSE;
     }
 
-    result = AndroidDrmSessionManager::registerMethod(env);
+    result = WideVineDrmHandler::registerMethod(env);
 
     if (result == JNI_FALSE) {
         return JNI_FALSE;
@@ -93,7 +93,7 @@ void unInitJavaInfo(JNIEnv *env)
     MediaCodec_Decoder::unInit(env);
     OutputBufferInfo::unInit(env);
     JEncryptionInfo::unInit(env);
-    AndroidDrmSessionManager::unInit(env);
+    WideVineDrmHandler::unInit(env);
 }
 
 extern "C"

@@ -2,7 +2,6 @@ package com.cicada.player.utils.media;
 
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
-import android.media.MediaCodecList;
 import android.media.MediaCrypto;
 import android.media.MediaFormat;
 import android.os.Build;
@@ -32,6 +31,8 @@ import static android.media.MediaCodec.INFO_TRY_AGAIN_LATER;
 public class MediaCodecDecoder {
     private static final String TAG = MediaCodecDecoder.class.getSimpleName();
 
+    private static final Object queLock = new Object();
+
     private static final int ERROR = -1;
     private static final int TRY_AGAIN = -11;
 
@@ -43,16 +44,15 @@ public class MediaCodecDecoder {
     private String mMime;
     private int mCodecCateGory = CODEC_CATEGORY_VIDEO;
 
-    private int mWidth;
-    private int mHeight;
-
     private MediaCodec mMediaCodec = null;
     private MediaCrypto mediaCrypto = null;
 
     public MediaCodecDecoder() {
     }
 
+    @NativeUsed
     public void setCodecSpecificData(Object datas) {
+        Logger.d(TAG, "--> setCodecSpecificData datas " + datas);
         mCodecSpecificDataMap.clear();
         if (datas == null) {
             return;
@@ -61,8 +61,9 @@ public class MediaCodecDecoder {
         mCodecSpecificDataMap.putAll((LinkedHashMap<? extends String, ? extends byte[]>) datas);
     }
 
+    @NativeUsed
     public boolean setDrmInfo(String uuid, byte[] sessionId) {
-        Logger.d(TAG, "setDrmInfo uuid = " + uuid);
+        Logger.d(TAG, "--> setDrmInfo uuid " + uuid);
         try {
             UUID drmUUID = UUID.fromString(uuid);
             mediaCrypto = new MediaCrypto(drmUUID, sessionId);
@@ -73,12 +74,19 @@ public class MediaCodecDecoder {
         return true;
     }
 
+    private boolean forceInsecureDecoder = false;
+
+    @NativeUsed
+    public void setForceInsecureDecoder(boolean force) {
+        Logger.d(TAG, "--> setForceInsecureDecoder  " + force);
+        forceInsecureDecoder = force;
+    }
+
+    @NativeUsed
     public int configureVideo(String mime, int width, int height, int angle, Object surface) {
-        Logger.v(TAG, "configureVideo start " + mime + ", " + width + ", " + height + ", " + surface);
+        Logger.d(TAG, "--> configureVideo start " + mime + ", " + width + ", " + height + ", " + surface);
         mCodecCateGory = CODEC_CATEGORY_VIDEO;
         mMime = mime;
-        mWidth = width;
-        mHeight = height;
 
         MediaFormat videoFormat = MediaFormat.createVideoFormat(mime, width, height);
         addCsdInfo(videoFormat);
@@ -86,9 +94,9 @@ public class MediaCodecDecoder {
             videoFormat.setInteger("rotation-degrees", angle);
         }
 
-        String codecName = findVideoDecoderName(videoFormat);
+        String codecName = findDecoderName(videoFormat);
         if (TextUtils.isEmpty(codecName)) {
-            Logger.e(TAG, "not found codec : " + mime);
+            Logger.e(TAG, "not found video codec : " + mime);
             return -12;
         }
 
@@ -113,24 +121,37 @@ public class MediaCodecDecoder {
             return -14;
         }
 
-        Logger.v(TAG, "configureVideo end ");
         return 0;
     }
 
-    private String findVideoDecoderName(MediaFormat videoFormat) {
-
-        String codecName = null;
-        boolean needSecureDecoder = mediaCrypto != null;
-        List<MediaCodecInfo> mediaCodecInfoList = MediaCodecUtils.getCodecInfos(mMime, needSecureDecoder, videoFormat);
-        codecName = getNotBlackCodecName(mediaCodecInfoList);
-
-        if (codecName == null && needSecureDecoder) {
-            needSecureDecoder = false;
-            mediaCodecInfoList = MediaCodecUtils.getCodecInfos(mMime, needSecureDecoder, videoFormat);
-            codecName = getNotBlackCodecName(mediaCodecInfoList);
+    private String findDecoderName(MediaFormat videoFormat) {
+        boolean needSecureDecoder = false;
+        if (mediaCrypto != null) {
+            needSecureDecoder = !forceInsecureDecoder && mediaCrypto.requiresSecureDecoderComponent(mMime);
         }
 
-        Logger.d(TAG, "findAudioDecoderName : " + codecName + " , secure = " + needSecureDecoder);
+        //TODO 测试用
+        needSecureDecoder = false;
+
+        String codecName = getDecoderName(videoFormat, needSecureDecoder);
+
+        if (TextUtils.isEmpty(codecName) && needSecureDecoder) {
+            needSecureDecoder = false;
+            codecName = getDecoderName(videoFormat, needSecureDecoder);
+        }
+
+        Logger.d(TAG, "findDecoderName : " + codecName + " , secure = " + needSecureDecoder);
+        return codecName;
+    }
+
+    private String getDecoderName(MediaFormat videoFormat, boolean needSecureDecoder) {
+        List<MediaCodecInfo> mediaCodecInfoList = MediaCodecUtils.getCodecInfos(mMime, needSecureDecoder, videoFormat);
+        String codecName = getNotBlackCodecName(mediaCodecInfoList);
+
+        if (TextUtils.isEmpty(codecName) && !mediaCodecInfoList.isEmpty()) {
+            codecName = mediaCodecInfoList.get(0).getName();
+        }
+
         return codecName;
     }
 
@@ -147,34 +168,18 @@ public class MediaCodecDecoder {
         return codecName;
     }
 
-    private String findAudioDecoderName(MediaFormat format) {
-        boolean needSecureDecoder = mediaCrypto != null;
 
-        List<MediaCodecInfo> mediaCodecInfoList = MediaCodecUtils.getCodecInfos(mMime, needSecureDecoder, format);
-        if (mediaCodecInfoList.isEmpty() && needSecureDecoder) {
-            needSecureDecoder = false;
-            mediaCodecInfoList = MediaCodecUtils.getCodecInfos(mMime, needSecureDecoder, format);
-        }
-
-        if (mediaCodecInfoList.isEmpty()) {
-            return null;
-        } else {
-            String name = mediaCodecInfoList.get(0).getName();
-            Logger.d(TAG, "findAudioDecoderName : " + name + " , secure = " + needSecureDecoder);
-            return name;
-        }
-    }
-
+    @NativeUsed
     public int configureAudio(String mime, int sampleRate, int channelCount, int isADTS) {
-        Logger.v(TAG, "configureAudio start " + mime + sampleRate + " , " + channelCount);
+        Logger.d(TAG, "--> configureAudio start " + mime + sampleRate + " , " + channelCount);
         mCodecCateGory = CODEC_CATEGORY_AUDIO;
         mMime = mime;
-
 
         MediaFormat audioFormat = MediaFormat.createAudioFormat(mime, sampleRate, channelCount);
         audioFormat.setInteger(MediaFormat.KEY_IS_ADTS, isADTS);
         addCsdInfo(audioFormat);
-        String codecName = findAudioDecoderName(audioFormat);
+
+        String codecName = findDecoderName(audioFormat);
         if (TextUtils.isEmpty(codecName)) {
             Logger.e(TAG, "not found codec : " + mime);
             return -12;
@@ -197,7 +202,6 @@ public class MediaCodecDecoder {
             return -14;
         }
 
-        Logger.v(TAG, "configureAudio end ");
         return 0;
     }
 
@@ -225,8 +229,10 @@ public class MediaCodecDecoder {
 
     private boolean started = false;
 
+    @NativeUsed
     public int start() {
-        Logger.v(TAG, "start ");
+        Logger.d(TAG, "--> start ");
+
         if (mMediaCodec == null) {
             Logger.e(TAG, "mMediaCodec  null ");
             return ERROR;
@@ -247,12 +253,12 @@ public class MediaCodecDecoder {
 
         mBufferInfo = new MediaCodec.BufferInfo();
 
-        Logger.v(TAG, "start end ");
         return 0;
     }
 
+    @NativeUsed
     public int flush() {
-        Logger.v(TAG, "flush start");
+        Logger.d(TAG, "--> flush start");
 
         if (mMediaCodec == null) {
             Logger.e(TAG, "mMediaCodec  null ");
@@ -264,12 +270,11 @@ public class MediaCodecDecoder {
             Logger.e(TAG, "flush  fail " + e.getMessage());
         }
 
-        Logger.v(TAG, "flush end");
         return 0;
     }
 
     public int stop() {
-        Logger.v(TAG, "stop start");
+        Logger.d(TAG, "--> stop start");
 
         if (mMediaCodec == null) {
             return ERROR;
@@ -283,13 +288,13 @@ public class MediaCodecDecoder {
                 return ERROR;
             }
         }
-
-        Logger.v(TAG, "stop end");
         return 0;
     }
 
+    @NativeUsed
     public int release() {
-        Logger.v(TAG, "release ");
+        Logger.d(TAG, "--> release ");
+
         if (mMediaCodec == null) {
             return ERROR;
         }
@@ -301,12 +306,13 @@ public class MediaCodecDecoder {
             mediaCrypto.release();
         }
 
-        Logger.v(TAG, "release end");
         return 0;
     }
 
+    @NativeUsed
     public int releaseOutputBuffer(int index, boolean render) {
-        Logger.v(TAG, "releaseOutputBuffer " + index + " , " + render);
+        Logger.d(TAG, "--> releaseOutputBuffer index " + index + " ,render =  " + render);
+
         if (mMediaCodec == null) {
             return ERROR;
         }
@@ -317,20 +323,19 @@ public class MediaCodecDecoder {
             Logger.e(TAG, "releaseOutputBuffer fail " + e.getMessage());
             return ERROR;
         }
-        Logger.v(TAG, "releaseOutputBuffer end ");
         return 0;
     }
 
+    @NativeUsed
     public int dequeueInputBufferIndex(long timeoutUs) {
+        Logger.d(TAG, "--> dequeueInputBufferIndex " + timeoutUs);
 
-        Logger.v(TAG, "dequeueInputBufferIndex " + timeoutUs);
         if (mMediaCodec == null) {
             return ERROR;
         }
 
         try {
             int index = mMediaCodec.dequeueInputBuffer(timeoutUs);
-            Logger.v(TAG, "dequeueInputBufferIndex index " + index);
             if (index >= 0) {
                 return index;
             } else {
@@ -343,18 +348,19 @@ public class MediaCodecDecoder {
 
     }
 
+    @NativeUsed
     public int queueInputBuffer(int index, byte[] buffer, long pts, boolean isConfig) {
-        Logger.v(TAG, "queueInputBuffer " + index + " , buffer =" + buffer + ", pts = " + pts);
+        Logger.d(TAG, "--> queueInputBuffer " + index + " , buffer =" + buffer + ", pts = " + pts);
         return queueInputBufferInner(index, buffer, pts, isConfig, false, null);
     }
 
+    @NativeUsed
     public int queueSecureInputBuffer(int index, byte[] buffer, Object encryptionInfo, long pts, boolean isConfig) {
-        Logger.v(TAG, "queueSecureInputBuffer " + index + " , buffer =" + buffer + ", pts = " + pts);
+        Logger.d(TAG, "--> queueSecureInputBuffer " + index + " , buffer =" + buffer + ", pts = " + pts);
         return queueInputBufferInner(index, buffer, pts, isConfig, true, encryptionInfo);
     }
 
     private int queueInputBufferInner(int index, byte[] buffer, long pts, boolean isConfig, boolean secure, Object encryptionInfo) {
-        Logger.v(TAG, "queueInputBufferInner " + index + " , buffer =" + buffer + ", pts = " + pts);
 
         if (mMediaCodec == null) {
             return ERROR;
@@ -388,7 +394,9 @@ public class MediaCodecDecoder {
         try {
             if (secure && buffer != null) {
                 MediaCodec.CryptoInfo crypInfo = createCryptoInfo((EncryptionInfo) encryptionInfo);
-                mMediaCodec.queueSecureInputBuffer(index, 0, crypInfo, pts, flags);
+                synchronized (queLock) {
+                    mMediaCodec.queueSecureInputBuffer(index, 0, crypInfo, pts, flags);
+                }
             } else {
                 if ((flags & BUFFER_FLAG_END_OF_STREAM) == BUFFER_FLAG_END_OF_STREAM) {
                     mMediaCodec.queueInputBuffer(index, 0, 0, 0, flags);
@@ -404,8 +412,8 @@ public class MediaCodecDecoder {
             return ERROR;
         }
 
-        Logger.v(TAG, "queueInputBufferInner  end ");
         return 0;
+
     }
 
     private MediaCodec.CryptoInfo createCryptoInfo(EncryptionInfo info) {
@@ -442,21 +450,23 @@ public class MediaCodecDecoder {
         return crypInfo;
     }
 
-
+    @NativeUsed
     public int dequeueOutputBufferIndex(long timeoutUs) {
-        Logger.v(TAG, "dequeueOutputBufferIndex " + timeoutUs);
+        Logger.d(TAG, "--> dequeueOutputBufferIndex " + timeoutUs);
         if (mMediaCodec == null) {
             return ERROR;
         }
 
         try {
             int index = mMediaCodec.dequeueOutputBuffer(mBufferInfo, timeoutUs);
-            Logger.v(TAG, "dequeueOutputBufferIndex " + index);
             if (index >= 0) {
                 return index;
             } else if (index == INFO_TRY_AGAIN_LATER || index == INFO_OUTPUT_FORMAT_CHANGED) {
                 return index;
             } else if (index == INFO_OUTPUT_BUFFERS_CHANGED) {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+                    mOutputBuffers = mMediaCodec.getOutputBuffers();
+                }
                 return index;
             } else {
                 return ERROR;
@@ -467,25 +477,22 @@ public class MediaCodecDecoder {
         }
     }
 
+    @NativeUsed
     public Object getOutputBufferInfo(int index) {
-        Logger.v(TAG, "getOutputBufferInfo " + index);
+        Logger.d(TAG, "--> getOutputBufferInfo " + index);
         if (index == INFO_OUTPUT_FORMAT_CHANGED) {
             OutputBufferInfo outputBufferInfo = fillFormatOutputBufferInfo();
-            Logger.v(TAG, "getOutputBufferInfo end " + outputBufferInfo);
             return outputBufferInfo;
-        } else if (index == INFO_OUTPUT_BUFFERS_CHANGED) {
-            mOutputBuffers = mMediaCodec.getOutputBuffers();
-            return null;
         } else if (index >= 0) {
             OutputBufferInfo outputBufferInfo = fillDecodeBufferInfo(index);
-            Logger.v(TAG, "getOutputBufferInfo end " + outputBufferInfo);
             return outputBufferInfo;
         }
         return null;
     }
 
+    @NativeUsed
     public Object getOutBuffer(int index) {
-        Logger.v(TAG, "getOutBuffer " + index);
+        Logger.d(TAG, "--> getOutBuffer " + index);
         if (index >= 0) {
             ByteBuffer outputBuffer = null;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -546,66 +553,6 @@ public class MediaCodecDecoder {
             return format.getInteger(key);
         }
         return -1;
-    }
-
-    private String findCodecName() {
-        MediaCodecInfo[] codecInfos = null;
-        int codecNums = 0;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            MediaCodecList mediaCodecList = new MediaCodecList(MediaCodecList.REGULAR_CODECS);
-            codecInfos = mediaCodecList.getCodecInfos();
-            codecNums = codecInfos.length;
-        } else {
-            codecNums = MediaCodecList.getCodecCount();
-        }
-
-        for (int i = 0; i < codecNums; i++) {
-            MediaCodecInfo info = null;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                info = codecInfos[i];
-            } else {
-                info = MediaCodecList.getCodecInfoAt(i);
-            }
-
-            if (info.isEncoder()) {
-                continue;
-            }
-
-            if (mCodecCateGory == CODEC_CATEGORY_VIDEO) {
-                if (isBlackCodec(info)) {
-                    continue;
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    try {
-                        MediaCodecInfo.CodecCapabilities capabilities = info.getCapabilitiesForType(mMime);
-                        MediaCodecInfo.VideoCapabilities videoCapabilities = capabilities.getVideoCapabilities();
-                        boolean sizeSupport = videoCapabilities.isSizeSupported(mWidth, mHeight);
-                        if (!sizeSupport) {
-                            sizeSupport = videoCapabilities.isSizeSupported(mHeight, mWidth);
-                        }
-
-                        if (!sizeSupport) {
-                            continue;
-                        }
-                    } catch (Exception e) {
-                        continue;
-                    }
-                }
-
-            } else {
-
-            }
-
-            String[] supportTypes = info.getSupportedTypes();
-            for (String type : supportTypes) {
-                if (mMime.equals(type)) {
-                    String name = info.getName();
-                    Logger.i(TAG, " found codec name " + name);
-                    return name;
-                }
-            }
-        }
-        return "";
     }
 
     static List<String> blackCodecPrefix = new ArrayList<>();
