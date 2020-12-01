@@ -19,6 +19,8 @@
 #include <cstdlib>
 #include <data_source/dataSourcePrototype.h>
 #include <utils/af_string.h>
+#include <drm/DrmInfo.h>
+#include <drm/DrmHandlerPrototype.h>
 
 // TODO support active and no active mode
 
@@ -434,17 +436,28 @@ namespace Cicada {
 
         if (mPDemuxer->getDemuxerHandle()) {
 
-            string &keyFormat = mCurSeg->encryption.keyFormat;
-
             header_type mergeVideoHeader = this->mMergeVideoHeader;
             header_type mergeAudioHeader = this->mMergerAudioHeader;
+            if(!mCurSeg->encryptions.empty()) {
+                for(SegmentEncryption& item : mCurSeg->encryptions){
+                    DrmInfo drmInfo{};
+                    drmInfo.format = item.keyFormat;
+                    drmInfo.uri = item.keyUrl;
 
-            if(keyFormat == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed" /*WideVine*/
-               || keyFormat == "com.apple.streamingkeydelivery"/*FairPlay*/) {
-                //need keep original data , no bsf.
-                mergeVideoHeader = header_type::header_type_no_change;
-                mergeAudioHeader = header_type::header_type_no_change;
+                    if(DrmHandlerPrototype::isSupport(drmInfo)) {
+                        //need keep original data , no bsf.
+                        mergeVideoHeader = header_type::header_type_no_change;
+                        mergeAudioHeader = header_type::header_type_no_change;
+                        mCurrentEncryption = item;
+                        break;
+                    } else if(item.keyFormat.empty()) {
+                        //support if not drm
+                        mCurrentEncryption = item;
+                        break;
+                    }
+                }
             }
+
             mPDemuxer->getDemuxerHandle()->setBitStreamFormat(mergeVideoHeader, mergeAudioHeader);
         }
 
@@ -573,7 +586,7 @@ namespace Cicada {
     bool HLSStream::updateKey()
     {
         string keyUrl = Helper::combinePaths(mPTracker->getBaseUri(),
-                                             mCurSeg->encryption.keyUrl);
+                                             mCurrentEncryption.keyUrl);
 
         if (mKeyUrl == keyUrl) {
             return false;
@@ -616,19 +629,19 @@ namespace Cicada {
         return true;
     }
 
-    bool HLSStream::updateIV() const
+    bool HLSStream::updateIV()
     {
-        if (!mCurSeg->encryption.ivStatic) {
-            mCurSeg->encryption.iv.clear();
-            mCurSeg->encryption.iv.resize(16);
+        if (!mCurrentEncryption.ivStatic) {
+            mCurrentEncryption.iv.clear();
+            mCurrentEncryption.iv.resize(16);
             int number = (int) mCurSeg->getSequenceNumber();
-            mCurSeg->encryption.iv[15] = static_cast<unsigned char>(
+            mCurrentEncryption.iv[15] = static_cast<unsigned char>(
                                              (number /* - segment::SEQUENCE_FIRST*/) & 0xff);
-            mCurSeg->encryption.iv[14] = static_cast<unsigned char>(
+            mCurrentEncryption.iv[14] = static_cast<unsigned char>(
                                              ((number /* - segment::SEQUENCE_FIRST*/) >> 8) & 0xff);
-            mCurSeg->encryption.iv[13] = static_cast<unsigned char>(
+            mCurrentEncryption.iv[13] = static_cast<unsigned char>(
                                              ((number/* - segment::SEQUENCE_FIRST*/) >> 16) & 0xff);
-            mCurSeg->encryption.iv[12] = static_cast<unsigned char>(
+            mCurrentEncryption.iv[12] = static_cast<unsigned char>(
                                              ((number /* - segment::SEQUENCE_FIRST*/) >> 24) & 0xff);
             return true;
         }
@@ -638,17 +651,17 @@ namespace Cicada {
 
     int HLSStream::updateSegDecrypter()
     {
-        if (mCurSeg->encryption.method == SegmentEncryption::AES_128) {
+        if (mCurrentEncryption.method == SegmentEncryption::AES_128) {
             if (updateKey()) {
                 if (mSegDecrypter == nullptr)
                     mSegDecrypter = unique_ptr<ISegDecrypter>(
-                                        SegDecryptorFactory::create(mCurSeg->encryption.method, Decrypter_read_callback, this));
+                                        SegDecryptorFactory::create(mCurrentEncryption.method, Decrypter_read_callback, this));
 
                 mSegDecrypter->SetOption("decryption key", mKey, 16);
             }
 
             if (updateIV()) {
-                mSegDecrypter->SetOption("decryption IV", &mCurSeg->encryption.iv[0], 16);
+                mSegDecrypter->SetOption("decryption IV", &mCurrentEncryption.iv[0], 16);
             }
 
             mSegDecrypter->flush();
@@ -656,26 +669,26 @@ namespace Cicada {
             if (mDRMMagicKey.empty() && mSegKeySource){
                 mDRMMagicKey = mSegKeySource->GetOption("drmMagicKey");
             }
-        } else if (mCurSeg->encryption.method == SegmentEncryption::AES_PRIVATE) {
+        } else if (mCurrentEncryption.method == SegmentEncryption::AES_PRIVATE) {
             memset(mKey, 0, 16);
-            long length = mCurSeg->encryption.keyUrl.length();
+            long length = mCurrentEncryption.keyUrl.length();
 
             if (length > 16) {
                 length = 16;
             }
 
-            memcpy(mKey, mCurSeg->encryption.keyUrl.c_str(), length);
+            memcpy(mKey, mCurrentEncryption.keyUrl.c_str(), length);
 
             if (mSegDecrypter == nullptr) {
                 mSegDecrypter = unique_ptr<ISegDecrypter>(
-                                    SegDecryptorFactory::create(mCurSeg->encryption.method,
+                                    SegDecryptorFactory::create(mCurrentEncryption.method,
                                             Decrypter_read_callback, this));
             }
 
-            mCurSeg->encryption.iv.clear();
-            mCurSeg->encryption.iv.resize(16);
+            mCurrentEncryption.iv.clear();
+            mCurrentEncryption.iv.resize(16);
             mSegDecrypter->SetOption("decryption key", mKey, 16);
-            mSegDecrypter->SetOption("decryption IV", &mCurSeg->encryption.iv[0], 16);
+            mSegDecrypter->SetOption("decryption IV", &mCurrentEncryption.iv[0], 16);
             mSegDecrypter->flush();
             if (mDRMMagicKey.empty() && mSegKeySource){
                 mDRMMagicKey = mSegDecrypter->GetOption("drmMagicKey");
@@ -700,7 +713,7 @@ namespace Cicada {
             assert(mSampeAesDecrypter != nullptr);
 
             if (mSampeAesDecrypter) {
-                mSampeAesDecrypter->SetOption("decryption IV", &mCurSeg->encryption.iv[0], 16);
+                mSampeAesDecrypter->SetOption("decryption IV", &mCurrentEncryption.iv[0], 16);
 //                mSampeAesDecrypter->SetOption("decryption KEYFORMAT", (uint8_t *) mCurSeg->encryption.keyFormat.c_str(),
 //                                              (int) mCurSeg->encryption.keyFormat.length());
             }
@@ -848,25 +861,23 @@ namespace Cicada {
     int HLSStream::updateDecrypter()
     {
         int ret = 0;
-        mProtectedBuffer = mCurSeg->encryption.method != SegmentEncryption::NONE;
+        mProtectedBuffer = mCurrentEncryption.method != SegmentEncryption::NONE;
 
-        if (mCurSeg->encryption.method == SegmentEncryption::AES_128 ||
-                mCurSeg->encryption.method == SegmentEncryption::AES_PRIVATE) {
+        DrmInfo drmInfo{};
+        drmInfo.uri = mCurrentEncryption.keyUrl;
+        drmInfo.format = mCurrentEncryption.keyFormat;
+        if (DrmHandlerPrototype::isSupport(drmInfo)) {
+            return 0;
+        }
+
+        if (mCurrentEncryption.method == SegmentEncryption::AES_128 ||
+                mCurrentEncryption.method == SegmentEncryption::AES_PRIVATE) {
             ret = updateSegDecrypter();
 
             if (ret < 0) {
                 return ret;
             }
-        } else if (mCurSeg->encryption.method == SegmentEncryption::AES_SAMPLE) {
-
-            string &keyFormat = mCurSeg->encryption.keyFormat;
-
-            if(keyFormat == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed" /*WideVine*/
-                || keyFormat == "com.apple.streamingkeydelivery"/*FairPlay*/) {
-                //will decrypted by Decoder, or system player.
-                return 0;
-            }
-
+        } else if (mCurrentEncryption.method == SegmentEncryption::AES_SAMPLE) {
             ret = updateSampleAesDecrypter();
 
             if (ret < 0) {
@@ -1063,9 +1074,6 @@ namespace Cicada {
                     mStreamStartTimeMap[i].seamlessPoint = true;
                 }
 
-                mCurKeyUrl = mCurSeg->encryption.keyUrl;
-                mCurKeyFormat = mCurSeg->encryption.keyFormat;
-
                 mCurSeg = nullptr;
             }
 
@@ -1158,8 +1166,8 @@ namespace Cicada {
             meta->description = strdup(mPTracker->getDescriptionInfo().c_str());
         }
 
-        meta->keyUrl = strdup(mCurKeyUrl.c_str());
-        meta->keyFormat = strdup(mCurKeyFormat.c_str());
+        meta->keyUrl = strdup(mCurrentEncryption.keyUrl.c_str());
+        meta->keyFormat = strdup(mCurrentEncryption.keyFormat.c_str());
 
         return 0;
     }

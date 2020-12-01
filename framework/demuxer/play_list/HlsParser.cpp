@@ -165,10 +165,11 @@ namespace Cicada {
         uint64_t discontinuityNum = 0;
         std::size_t prevbyterangeoffset = 0;
         const SingleValueTag *ctx_byterange = nullptr;
-        SegmentEncryption encryption;
+        std::vector<SegmentEncryption> encryptionArray;
         const ValuesListTag *ctx_extinf = nullptr;
         std::list<Tag *>::const_iterator it;
         std::shared_ptr<segment> curInitSegment = nullptr;
+        bool clearKeyArray = true;
 
         for (it = tagslist.begin(); it != tagslist.end(); ++it) {
             const Tag *tag = *it;
@@ -237,8 +238,9 @@ namespace Cicada {
 
                     pSegment->discontinuityNum = discontinuityNum;
 
-                    if (encryption.method != SegmentEncryption::NONE) {
-                        pSegment->setEncryption(encryption);
+                    if(!encryptionArray.empty()) {
+                        pSegment->setEncryption(encryptionArray);
+                        clearKeyArray = true;
                     }
                 }
                 break;
@@ -262,6 +264,13 @@ namespace Cicada {
                     break;
 
                 case AttributesTag::EXTXKEY: {
+
+                    if(clearKeyArray) {
+                        encryptionArray.clear();
+                        clearKeyArray = false;
+                    }
+
+                    SegmentEncryption encryption{};
                     const auto *keytag = static_cast<const AttributesTag *>(tag);
 
                     if (keytag->getAttributeByName("METHOD") &&
@@ -290,33 +299,31 @@ namespace Cicada {
                     } else if (keytag->getAttributeByName("METHOD") &&
                                keytag->getAttributeByName("METHOD")->value == "SAMPLE-AES" &&
                                keytag->getAttributeByName("URI")) {
+                        encryption.method = SegmentEncryption::AES_SAMPLE;
+                        encryption.iv.clear();
+                        encryption.keyUrl = keytag->getAttributeByName("URI")->quotedString();
 
-                        string keyFormat = "";
-                        if (keytag->getAttributeByName("KEYFORMAT")) {
-                            keyFormat = keytag->getAttributeByName("KEYFORMAT")->quotedString();
-                        }
-
-                        //TODO  判断WideVine,目前是否只有支持WideVine？
-                        if(keyFormat == ""
-                           || keyFormat == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed" /*WideVine*/) {
-                            encryption.method = SegmentEncryption::AES_SAMPLE;
+                        if (keytag->getAttributeByName("IV")) {
                             encryption.iv.clear();
-                            encryption.keyUrl = keytag->getAttributeByName("URI")->quotedString();
-
-                            if (keytag->getAttributeByName("IV")) {
-                                encryption.iv.clear();
-                                encryption.iv = keytag->getAttributeByName("IV")->hexSequence();
-                                encryption.ivStatic = true;
-                            }
-
-                            encryption.keyFormat = keyFormat;
+                            encryption.iv = keytag->getAttributeByName("IV")->hexSequence();
+                            encryption.ivStatic = true;
                         }
+
                     } else {
                         /* unsupported or invalid */
                         encryption.method = SegmentEncryption::NONE;
                         encryption.keyUrl = "";
                         encryption.iv.clear();
                     }
+
+
+                    string keyFormat = "";
+                    if (keytag->getAttributeByName("KEYFORMAT")) {
+                        keyFormat = keytag->getAttributeByName("KEYFORMAT")->quotedString();
+                    }
+                    encryption.keyFormat = keyFormat;
+
+                    encryptionArray.push_back(encryption);
                 }
                 break;
 

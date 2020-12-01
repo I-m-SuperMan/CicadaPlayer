@@ -143,7 +143,7 @@ namespace Cicada {
 
         int updateSegment();
 
-        bool updateIV() const;
+        bool updateIV();
 
         enum OpenType {
             SegNum, SegPosition
@@ -195,7 +195,6 @@ namespace Cicada {
         string mKeyUrl = "";
         uint8_t mKey[16];
 
-
         struct segmentTimeInfo {
             bool seamlessPoint = false;
             int64_t timePosition = INT64_MIN;
@@ -219,8 +218,8 @@ namespace Cicada {
 
         std::string mDRMMagicKey{};
 
-        std::string mCurKeyUrl{};
-        std::string mCurKeyFormat{};
+        SegmentEncryption mCurrentEncryption{};
+
     };
 }
 
