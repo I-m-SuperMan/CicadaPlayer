@@ -73,16 +73,29 @@ void WideVineDrmHandler::open() {
         return;
     }
 
+    {
+        std::unique_lock<std::mutex> lock(mDrmMutex);
+        if (bSessionRequested) {
+            return;
+        } else {
+            bSessionRequested = true;
+        }
+    }
+
     NewStringUTF jUrl(env, drmInfo.uri.c_str());
     NewStringUTF jFormat(env, drmInfo.format.c_str());
-    bSessionRequested = true;
     jstring pJurl = jUrl.getString();
     jstring pJformat = jFormat.getString();
     env->CallVoidMethod(mJDrmSessionManger,
                         jMediaDrmSession_requireSession,
                         pJurl, pJformat,
-                        nullptr, "");
+                        nullptr, nullptr);
+}
 
+
+bool WideVineDrmHandler::isErrorState() {
+    std::unique_lock<std::mutex> lock(mDrmMutex);
+    return mState == SESSION_STATE_ERROR;
 }
 
 IDrmHandler *
@@ -299,11 +312,9 @@ int WideVineDrmHandler::initDecoder(void *pDecoder) {
         return -1;
     }
 
-    std::unique_lock<std::mutex> lock(mDrmMutex);
-    if (!bSessionRequested) {
-        open();
-    }
+    open();
 
+    std::unique_lock<std::mutex> lock(mDrmMutex);
     if (mState == SESSION_STATE_OPENED) {
         bool insecure = isForceInsecureDecoder();
         wideVineDecoder->setWideVineForceInSecureDecoder(insecure);
@@ -412,6 +423,3 @@ void WideVineDrmHandler::convertData(int naluLengthSize, uint8_t **new_data, int
 
     *new_size = sampleBytesWritten;
 }
-
-
-

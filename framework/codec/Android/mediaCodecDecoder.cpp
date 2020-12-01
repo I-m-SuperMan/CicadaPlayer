@@ -38,7 +38,6 @@ namespace Cicada {
     }
 
     mediaCodecDecoder::~mediaCodecDecoder() {
-        lock_guard<recursive_mutex> func_entry_lock(mFuncEntryMutex);
         delete mDecoder;
     }
 
@@ -293,6 +292,11 @@ namespace Cicada {
             int ret = mDrmHandler->initDecoder(this);
             if (ret == 0) {
                 ret = configDecoder();
+
+                if (ret < 0) {
+                    return ret;
+                }
+
             } else if (ret == -EAGAIN) {
                 return -EAGAIN;
             } else {
@@ -492,15 +496,6 @@ namespace Cicada {
         }
     }
 
-    void mediaCodecDecoder::setWideVineSession(const std::string &uuid, char *sessionId,
-                                               int sessionSize) {
-        mDecoder->setDrmInfo(uuid, sessionId, sessionSize);
-    }
-
-    void mediaCodecDecoder::setWideVineForceInSecureDecoder(bool insecure) {
-        mDecoder->setForceInsecureDecoder(insecure);
-    }
-
     int mediaCodecDecoder::configDecoder() {
 
         int ret = -1;
@@ -531,6 +526,15 @@ namespace Cicada {
         }
 
         return ret;
+    }
+
+    void mediaCodecDecoder::setWideVineSession(const std::string &uuid, char *sessionId,
+                                               int sessionSize) {
+        mDecoder->setDrmInfo(uuid, sessionId, sessionSize);
+    }
+
+    void mediaCodecDecoder::setWideVineForceInSecureDecoder(bool insecure) {
+        mDecoder->setForceInsecureDecoder(insecure);
     }
 
 

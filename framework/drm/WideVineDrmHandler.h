@@ -31,6 +31,8 @@ namespace Cicada {
 
         int initDecoder(void *pDecoder) override;
 
+        bool isErrorState() override;
+
     public:
         static void init(JNIEnv *env);
 

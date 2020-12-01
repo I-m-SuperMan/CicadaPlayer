@@ -23,11 +23,15 @@
 #define CODEC_AUDIO (1)
 
 namespace Cicada{
-    class mediaCodecDecoder : public ActiveDecoder, private codecPrototype , IWideVineDecoder {
+    class mediaCodecDecoder : public ActiveDecoder, IWideVineDecoder, private codecPrototype {
     public:
         mediaCodecDecoder();
 
         ~mediaCodecDecoder() override;
+
+        void setWideVineSession(const std::string& uuid, char* sessionId , int sessionSize) override;
+
+        void setWideVineForceInSecureDecoder(bool insecure) override ;
 
     private:
 
@@ -46,9 +50,6 @@ namespace Cicada{
             return 0;
         };
 
-        void setWideVineSession(const std::string& uuid, char* sessionId , int sessionSize) override;
-
-        void setWideVineForceInSecureDecoder(bool insecure) override ;
 
     private:
         static bool checkSupport(const Stream_meta &meta, uint64_t flags, int maxSize, const Cicada::DrmInfo &drmInfo);

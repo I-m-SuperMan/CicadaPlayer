@@ -42,3 +42,18 @@ IDrmHandler *DrmManager::require(const DrmInfo &drmInfo) {
 
     return pDrmHandler;
 }
+
+void DrmManager::clearErrorItems() {
+    std::unique_lock<std::mutex> drmLock(mDrmMutex);
+
+    if (!mDrmMap.empty()) {
+        for (auto iter = mDrmMap.begin(); iter != mDrmMap.end();) {
+            IDrmHandler *handler = iter->second.get();
+            if (handler->isErrorState()) {
+                iter = mDrmMap.erase(iter);
+            } else {
+                iter++;
+            }
+        }
+    }
+}

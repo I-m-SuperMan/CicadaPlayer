@@ -34,6 +34,10 @@ namespace Cicada {
             return 0;
         };
 
+        virtual bool isErrorState() {
+            return false;
+        }
+
     protected:
         DrmInfo drmInfo;
 

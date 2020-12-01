@@ -454,6 +454,9 @@ int SuperMediaPlayer::Stop()
     }
     mBufferController->ClearPacket(BUFFER_TYPE_SUBTITLE);
     Reset();
+
+    mDrmManager->clearErrorItems();
+
     AF_LOGD("stop spend time is %lld", af_gettime_ms() - t1);
     return 0;
 }

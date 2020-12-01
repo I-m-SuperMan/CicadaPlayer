@@ -25,6 +25,8 @@ namespace Cicada {
 
         IDrmHandler *require(const DrmInfo &drmInfo);
 
+        void clearErrorItems();
+
     private:
         std::mutex mDrmMutex{};
         std::map<DrmInfo, std::unique_ptr<IDrmHandler>  , DrmInfo::DrmInfoCompare> mDrmMap{};
