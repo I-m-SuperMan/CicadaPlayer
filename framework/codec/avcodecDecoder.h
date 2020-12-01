@@ -51,7 +51,7 @@ namespace Cicada{
 
         ~avcodecDecoder() override;
 
-        static bool is_supported(enum AFCodecID codec,std::map<std::string,std::string> drmInfo);
+        static bool is_supported(enum AFCodecID codec, const DrmInfo &drmInfo);
 
         void setEOF() override
         {
@@ -68,7 +68,8 @@ namespace Cicada{
             return new avcodecDecoder();
         };
 
-        bool is_supported(const Stream_meta& meta, uint64_t flags, int maxSize,std::map<std::string,std::string> drmInfo) override
+        bool is_supported(const Stream_meta& meta, uint64_t flags, int maxSize,
+                          const DrmInfo &drmInfo) override
         {
             if (flags & DECFLAG_SW)
                 return is_supported(meta.codec ,drmInfo);
@@ -82,7 +83,7 @@ namespace Cicada{
 
         int dequeue_decoder(std::unique_ptr<IAFFrame> &pFrame) override;
 
-        int init_decoder(const Stream_meta *meta, void *wnd, uint64_t flags,std::map<std::string,std::string> drmInfo) override;
+        int init_decoder(const Stream_meta *meta, void *wnd, uint64_t flags, const DrmInfo &drmInfo) override;
 
         void close_decoder() override;
 

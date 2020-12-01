@@ -39,6 +39,7 @@ typedef enum DECODER_FRAME_STATUS {
 #define STATUS_CREATE_FAIL 1 << decoder_create_fail
 
 #include <base/media/IAFPacket.h>
+#include <drm/IDrmHandler.h>
 #include "IVideoFrame.h"
 #include "IDrmSessionManager.h"
 
@@ -160,8 +161,8 @@ namespace Cicada {
 
         virtual uint32_t getInputPaddingSize() = 0;
 
-        virtual void setRequireDrmHandlerCallback(std::function<IDrmHandler*()>) {
-            mDrmSessionManager = drmSessionManager;
+        void setRequireDrmHandlerCallback(std::function<IDrmHandler*(const DrmInfo& drmInfo)> callback){
+            mRequireDrmHandlerCallback  = callback;
         }
 
     protected:
@@ -175,7 +176,7 @@ namespace Cicada {
         bool bNeedKeyFrame{true};
         int64_t keyPts = INT64_MIN;
 
-        IDrmSessionManager *mDrmSessionManager = nullptr;
+        std::function<IDrmHandler*(const DrmInfo& drmInfo)> mRequireDrmHandlerCallback{nullptr};
     };
 }
 

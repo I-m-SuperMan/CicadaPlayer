@@ -15,7 +15,8 @@ void codecPrototype::addPrototype(codecPrototype *se)
     //  AF_LOGD("codecQueue size is %d\n",codecQueue.size());
 }
 
-Cicada::IDecoder *codecPrototype::create(const Stream_meta &meta, uint64_t flags, int maxSize,std::map<std::string,std::string> drmInfo)
+Cicada::IDecoder *codecPrototype::create(const Stream_meta &meta, uint64_t flags, int maxSize,
+                                         const Cicada::DrmInfo &drmInfo)
 {
     bool bHW = static_cast<bool>(flags & DECFLAG_HW);
 

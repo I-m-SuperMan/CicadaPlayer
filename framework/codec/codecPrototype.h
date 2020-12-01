@@ -7,6 +7,7 @@
 #include <memory>
 #include <map>
 #include "IDecoder.h"
+#include <drm/DrmInfo.h>
 
 class CICADA_CPLUS_EXTERN codecPrototype {
     //    static vector<codecPrototype *> codecQueue;
@@ -17,11 +18,12 @@ public:
 
     virtual Cicada::IDecoder *clone() = 0;
 
-    virtual bool is_supported(const Stream_meta &meta, uint64_t flags, int maxSize,std::map<std::string,std::string> drmInfo) = 0;
+    virtual bool is_supported(const Stream_meta &meta, uint64_t flags, int maxSize,
+                              const Cicada::DrmInfo &drmInfo) = 0;
 
     static void addPrototype(codecPrototype *se);
 
-    static Cicada::IDecoder *create(const Stream_meta &meta, uint64_t flags, int maxSize, std::map<std::string,std::string> drmInfo);
+    static Cicada::IDecoder *create(const Stream_meta &meta, uint64_t flags, int maxSize, const Cicada::DrmInfo &drmInfo);
 };
 
 
