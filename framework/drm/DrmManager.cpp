@@ -13,24 +13,23 @@ DrmManager::DrmManager() {
 }
 
 DrmManager::~DrmManager() {
-    mDrmArray.clear();
+    mDrmMap.clear();
 }
 
-IDrmHandler *DrmManager::require(const std::string &uri, const std::string &format) {
+IDrmHandler *DrmManager::require(const DrmInfo &drmInfo) {
 
     std::unique_lock<std::mutex> drmLock(mDrmMutex);
 
-    if (!mDrmArray.empty()) {
-        for (auto &item : mDrmArray) {
-            DrmContext *drmContext = item.get();
-            if (drmContext->getUri() == uri && drmContext->getFormat() == format) {
-                return drmContext->getHandler();
+    if (!mDrmMap.empty()) {
+        for (auto &item : mDrmMap) {
+            auto &drmItem = (DrmInfo &) item.first;
+            if (drmItem == drmInfo) {
+                return item.second.get();
             }
         }
     }
 
-    auto *newDrmContext = new DrmContext(uri, format);
-    IDrmHandler *pDrmHandler = newDrmContext->getHandler();
+    IDrmHandler *pDrmHandler = DrmHandlerPrototype::create(drmInfo);
 
     assert(pDrmHandler != nullptr);
 
@@ -39,33 +38,7 @@ IDrmHandler *DrmManager::require(const std::string &uri, const std::string &form
     }
 
     pDrmHandler->setDrmCallback(mDrmCallback);
-    mDrmArray.push_back(std::unique_ptr<DrmContext>(newDrmContext));
+    mDrmMap[drmInfo] = (std::unique_ptr<IDrmHandler>(pDrmHandler));
 
     return pDrmHandler;
-}
-
-
-DrmContext::DrmContext(const std::string &uri, const std::string &format) {
-    this->uri = uri;
-    this->format = format;
-
-    IDrmHandler *drm = DrmHandlerPrototype::create(uri, format);
-    drmHandler = std::unique_ptr<IDrmHandler>(drm);
-    drm->open();
-}
-
-DrmContext::~DrmContext() {
-
-}
-
-std::string DrmContext::getUri() {
-    return uri;
-}
-
-std::string DrmContext::getFormat() {
-    return format;
-}
-
-IDrmHandler *DrmContext::getHandler() {
-    return drmHandler.get();
 }

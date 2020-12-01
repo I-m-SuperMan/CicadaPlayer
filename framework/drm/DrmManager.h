@@ -9,27 +9,9 @@
 #include <vector>
 #include <mutex>
 #include "IDrmHandler.h"
+#include "DrmInfo.h"
 
 namespace Cicada {
-    class DrmContext {
-
-    public:
-        DrmContext(const std::string &uri, const std::string &format);
-
-        ~DrmContext();
-
-        std::string getUri();
-
-        std::string getFormat();
-
-        IDrmHandler *getHandler();
-
-    private:
-        std::string uri;
-        std::string format;
-        std::unique_ptr<IDrmHandler> drmHandler{nullptr};
-    };
-
 
     class DrmManager {
     public:
@@ -42,11 +24,11 @@ namespace Cicada {
             mDrmCallback = callback;
         }
 
-        IDrmHandler *require(const std::string &uri, const std::string &format);
+        IDrmHandler *require(const DrmInfo &drmInfo);
 
     private:
         std::mutex mDrmMutex{};
-        std::vector<std::unique_ptr<DrmContext>> mDrmArray{};
+        std::map<DrmInfo, std::unique_ptr<IDrmHandler>> mDrmMap{};
         DrmCallback mDrmCallback{nullptr};
     };
 

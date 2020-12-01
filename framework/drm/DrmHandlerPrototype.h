@@ -6,6 +6,7 @@
 
 #include <utils/CicadaType.h>
 #include "IDrmHandler.h"
+#include "DrmInfo.h"
 
 namespace Cicada {
 
@@ -15,13 +16,13 @@ namespace Cicada {
     public:
         virtual ~DrmHandlerPrototype() = default;
 
-        virtual IDrmHandler *clone(const std::string &uri, const std::string &format) = 0;
+        virtual IDrmHandler *clone(const DrmInfo &drmInfo) = 0;
 
-        virtual bool is_supported(const std::string &format) = 0;
+        virtual bool is_supported(const DrmInfo &drmInfo) = 0;
 
         static void addPrototype(DrmHandlerPrototype *se);
 
-        static Cicada::IDrmHandler *create(const std::string &uri, const std::string &format);
+        static Cicada::IDrmHandler *create(const DrmInfo &drmInfo);
     };
 }
 

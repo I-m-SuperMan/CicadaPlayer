@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.6)
 project(framework_drm)
 set(CMAKE_CXX_STANDARD 11)
 set(SOURCE_FILES
+        DrmInfo.cpp
         DrmManager.cpp
         IDrmHandler.cpp
         DrmHandlerPrototype.cpp

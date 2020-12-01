@@ -9,6 +9,7 @@
 #include <string>
 #include <functional>
 #include <map>
+#include "DrmInfo.h"
 
 typedef std::function<std::map<std::string, std::string>(
         std::map<std::string, std::string>)> DrmCallback;
@@ -22,7 +23,7 @@ namespace Cicada {
             Ready = 1
         };
 
-        IDrmHandler(const std::string &uri, const std::string &format);
+        IDrmHandler(const DrmInfo &drmInfo);
 
         void setDrmCallback(const DrmCallback &callback) {
             drmCallback = callback;
@@ -35,8 +36,7 @@ namespace Cicada {
         virtual void open() = 0;
 
     protected:
-        std::string uri;
-        std::string format;
+        DrmInfo drmInfo;
 
         DrmCallback drmCallback{nullptr};
 

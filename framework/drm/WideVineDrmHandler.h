@@ -17,7 +17,7 @@
 namespace Cicada {
     class WideVineDrmHandler : public IDrmHandler, private DrmHandlerPrototype {
     public:
-        WideVineDrmHandler(const std::string &uri, const std::string &format);
+        WideVineDrmHandler(const DrmInfo &drmInfo);
 
         ~WideVineDrmHandler();
 
@@ -27,9 +27,9 @@ namespace Cicada {
 
         int getResult(char **dst, int64_t *dstSize) override;
 
-        IDrmHandler *clone(const std::string &uri, const std::string &format) override;
+        IDrmHandler *clone(const DrmInfo &drmInfo) override;
 
-        bool is_supported(const std::string &format) override;
+        bool is_supported(const DrmInfo &drmInfo) override;
 
         bool isForceInsecureDecoder();
 
@@ -56,7 +56,7 @@ namespace Cicada {
 
     protected:
         explicit WideVineDrmHandler(int dummy)
-                : IDrmHandler("", "") {
+                : IDrmHandler(DrmInfo{}) {
             addPrototype(this);
         }
 

@@ -6,7 +6,6 @@
 
 using namespace Cicada;
 
-IDrmHandler::IDrmHandler(const std::string &uri, const std::string &format) {
-    this->uri = uri;
-    this->format = format;
+IDrmHandler::IDrmHandler(const DrmInfo &drmInfo) {
+    this->drmInfo = drmInfo;
 }

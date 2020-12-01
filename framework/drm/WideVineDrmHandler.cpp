@@ -28,8 +28,8 @@ using namespace Cicada;
 
 WideVineDrmHandler WideVineDrmHandler::dummyWideVineHandler(0);
 
-WideVineDrmHandler::WideVineDrmHandler(const std::string &uri, const std::string &format)
-        : IDrmHandler(uri, format) {
+WideVineDrmHandler::WideVineDrmHandler(const DrmInfo &drmInfo)
+        : IDrmHandler(drmInfo) {
     JniEnv jniEnv{};
 
     JNIEnv *env = jniEnv.getEnv();
@@ -88,8 +88,8 @@ void WideVineDrmHandler::open() {
         return;
     }
 
-    NewStringUTF jUrl(env, uri.c_str());
-    NewStringUTF jFormat(env, format.c_str());
+    NewStringUTF jUrl(env, drmInfo.uri.c_str());
+    NewStringUTF jFormat(env, drmInfo.format.c_str());
 
     env->CallVoidMethod(mJDrmSessionManger,
                         jMediaDrmSession_requireSession,
@@ -98,12 +98,12 @@ void WideVineDrmHandler::open() {
 }
 
 IDrmHandler *
-WideVineDrmHandler::clone(const std::string &uri, const std::string &format) {
-    return new WideVineDrmHandler(uri, format);
+WideVineDrmHandler::clone(const DrmInfo &drmInfo) {
+    return new WideVineDrmHandler(drmInfo);
 }
 
-bool WideVineDrmHandler::is_supported(const std::string &format) {
-    return format == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed";
+bool WideVineDrmHandler::is_supported(const DrmInfo &drmInfo) {
+    return drmInfo.format == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed";
 }
 
 static JNINativeMethod mediaCodec_method_table[] = {
@@ -240,8 +240,8 @@ WideVineDrmHandler::requestProvision(JNIEnv *env, jobject instance, jlong native
         char *responseData = nullptr;
         int responseDataSize = 0;
 
-        if(result.count("responseData") != 0){
-            responseDataSize = CicadaUtils::base64dec(result["responseData"] , &responseData);
+        if (result.count("responseData") != 0) {
+            responseDataSize = CicadaUtils::base64dec(result["responseData"], &responseData);
         }
 
         if (responseData == nullptr) {
@@ -285,8 +285,8 @@ WideVineDrmHandler::requestKey(JNIEnv *env, jobject instance, jlong nativeIntanc
         char *responseData = nullptr;
         int responseDataSize = 0;
 
-        if(result.count("responseData") != 0){
-            responseDataSize = CicadaUtils::base64dec(result["responseData"] , &responseData);
+        if (result.count("responseData") != 0) {
+            responseDataSize = CicadaUtils::base64dec(result["responseData"], &responseData);
         }
 
         AF_LOGD("requestKey , response data = %p , size = %d", responseData, responseDataSize);
