@@ -142,6 +142,8 @@ namespace Cicada {
         void SetAudioRenderingCallBack(onRenderFrame cb, void *userData)
         {}
 
+        void setDrmRequestCallback(const DrmCallback &drmCallback) override
+        {}
 
     public:
         static bool is_supported(const options *opts)

@@ -46,7 +46,7 @@ namespace Cicada {
 #endif
     }
 
-    bool AFVTBDecoder::is_supported(enum AFCodecID codec)
+    bool AFVTBDecoder::is_supported(enum AFCodecID codec , const DrmInfo& drmInfo)
     {
         if (codec != AF_CODEC_ID_H264 && codec != AF_CODEC_ID_HEVC) {
             return false;
@@ -115,7 +115,7 @@ namespace Cicada {
         return 0;
     }
 
-    int AFVTBDecoder::init_decoder(const Stream_meta *meta, void *voutObsr, uint64_t flags)
+    int AFVTBDecoder::init_decoder(const Stream_meta *meta, void *voutObsr, uint64_t flags, const DrmInfo& drmInfo)
     {
         if (meta->pixel_fmt == AF_PIX_FMT_YUV422P || meta->pixel_fmt == AF_PIX_FMT_YUVJ422P || meta->interlaced == InterlacedType_YES) {
             return -ENOTSUP;
