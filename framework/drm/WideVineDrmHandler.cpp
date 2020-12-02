@@ -51,7 +51,6 @@ WideVineDrmHandler::~WideVineDrmHandler() {
         return;
     }
 
-
     if (mJDrmSessionManger != nullptr) {
         env->CallVoidMethod(mJDrmSessionManger, jMediaDrmSession_releaseSession);
         env->DeleteGlobalRef(mJDrmSessionManger);

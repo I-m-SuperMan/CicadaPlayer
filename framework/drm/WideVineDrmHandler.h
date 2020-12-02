@@ -19,7 +19,7 @@ namespace Cicada {
     public:
         WideVineDrmHandler(const DrmInfo &drmInfo);
 
-        ~WideVineDrmHandler();
+        ~WideVineDrmHandler() override;
 
         DrmHandler *clone(const DrmInfo &drmInfo) override;
 

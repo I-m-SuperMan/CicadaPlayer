@@ -20,6 +20,8 @@ namespace Cicada {
 
         DrmHandler(const DrmInfo &drmInfo);
 
+        virtual ~DrmHandler() = default;
+
         void setDrmCallback(const DrmCallback &callback) {
             drmCallback = callback;
         }
