@@ -242,7 +242,7 @@ namespace Cicada {
             mCRArg = arg;
         }
 
-        virtual void setDrmRequestCallback(const DrmCallback &drmCallback) = 0;
+        virtual void setDrmRequestCallback(const std::function<DrmResponseData*(const DrmRequestParam& drmRequestParam)>  &drmCallback) = 0;
 
         virtual int getCurrentStreamMeta(Stream_meta *meta, StreamType type) = 0;
 

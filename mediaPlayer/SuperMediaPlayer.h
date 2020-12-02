@@ -204,7 +204,7 @@ namespace Cicada {
 
         int invokeComponent(std::string content) override;
 
-        void setDrmRequestCallback(const DrmCallback &drmCallback) override;
+        void setDrmRequestCallback(const std::function<DrmResponseData*(const DrmRequestParam& drmRequestParam)>  &drmCallback) override;
 
     private:
         void NotifyPosition(int64_t position);

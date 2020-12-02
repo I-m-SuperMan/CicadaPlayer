@@ -104,7 +104,7 @@ namespace Cicada {
         */
         void SetDataSourceChangedCallback(function<void(const string &)> urlChangedCallbak);
 
-        void setDrmRequestCallback(const DrmCallback& drmCallback);
+        void setDrmRequestCallback(const std::function<DrmResponseData*(const DrmRequestParam& drmRequestParam)> & drmCallback);
 
         /*
          *select specific track info

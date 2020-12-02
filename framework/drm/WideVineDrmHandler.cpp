@@ -14,6 +14,7 @@
 #include <utils/Android/NewByteArray.h>
 #include <utils/CicadaUtils.h>
 #include <cassert>
+#include <utils/CicadaJSON.h>
 
 extern "C" {
 #include <utils/errors/framework_error.h>
@@ -223,40 +224,43 @@ WideVineDrmHandler::requestProvision(JNIEnv *env, jobject instance, jlong native
     }
 
     auto *drmSessionManager = (WideVineDrmHandler *) (int64_t) nativeIntance;
-    if (drmSessionManager->drmCallback != nullptr) {
-
-        GetStringUTFChars cUrl(env, url);
-        char *cData = JniUtils::jByteArrayToChars(env, data);
-        int dataLen = env->GetArrayLength(data);
-        std::map<std::string, std::string> requestParam{};
-        requestParam["drmType"] = "WideVine";
-        requestParam["requestType"] = "provision";
-        requestParam["url"] = std::string(cUrl.getChars());
-        requestParam["data"] = CicadaUtils::base64enc(cData, dataLen);
-        std::map<std::string, std::string> result = drmSessionManager->drmCallback(requestParam);
-
-        free(cData);
-
-        char *responseData = nullptr;
-        int responseDataSize = 0;
-
-        if (result.count("responseData") != 0) {
-            responseDataSize = CicadaUtils::base64dec(result["responseData"], &responseData);
-        }
-
-        if (responseData == nullptr) {
-            return nullptr;
-        } else {
-            jbyteArray mResult = env->NewByteArray(responseDataSize);
-            env->SetByteArrayRegion(mResult, 0, responseDataSize, (jbyte *) (responseData));
-
-            free(responseData);
-
-            return mResult;
-        }
-    } else {
+    if (drmSessionManager->drmCallback == nullptr) {
         return nullptr;
     }
+
+    GetStringUTFChars cUrl(env, url);
+    char *cData = JniUtils::jByteArrayToChars(env, data);
+    int dataLen = env->GetArrayLength(data);
+
+    DrmRequestParam drmRequestParam{};
+    drmRequestParam.mDrmType = "WideVine";
+
+    CicadaJSONItem param{};
+    param.addValue("requestType", "provision");
+    param.addValue("url", std::string(cUrl.getChars()));
+    param.addValue("data", CicadaUtils::base64enc(cData, dataLen));
+    drmRequestParam.mParam = &param;
+
+    free(cData);
+
+    DrmResponseData *drmResponseData = drmSessionManager->drmCallback(drmRequestParam);
+
+    if (drmResponseData == nullptr) {
+        return nullptr;
+    }
+
+    const char *responseData = drmResponseData->mData;
+    int responseDataSize = drmResponseData->mSize;
+
+    jbyteArray mResult = nullptr;
+    if (responseData != nullptr && responseDataSize > 0) {
+        mResult = env->NewByteArray(responseDataSize);
+        env->SetByteArrayRegion(mResult, 0, responseDataSize, (jbyte *) (responseData));
+    }
+
+    delete drmResponseData;
+
+    return mResult;
 }
 
 jbyteArray
@@ -269,38 +273,43 @@ WideVineDrmHandler::requestKey(JNIEnv *env, jobject instance, jlong nativeIntanc
     }
 
     auto *drmSessionManager = (WideVineDrmHandler *) (int64_t) nativeIntance;
-    if (drmSessionManager->drmCallback != nullptr) {
-
-        GetStringUTFChars cUrl(env, url);
-        char *cData = JniUtils::jByteArrayToChars(env, data);
-        int dataLen = env->GetArrayLength(data);
-        std::map<std::string, std::string> requestParam{};
-        requestParam["drmType"] = "WideVine";
-        requestParam["requestType"] = "key";
-        requestParam["url"] = std::string(cUrl.getChars());
-        requestParam["data"] = CicadaUtils::base64enc(cData, dataLen);
-        std::map<std::string, std::string> result = drmSessionManager->drmCallback(requestParam);
-
-        free(cData);
-
-        char *responseData = nullptr;
-        int responseDataSize = 0;
-
-        if (result.count("responseData") != 0) {
-            responseDataSize = CicadaUtils::base64dec(result["responseData"], &responseData);
-        }
-
-        AF_LOGD("requestKey , response data = %p , size = %d", responseData, responseDataSize);
-        if (responseData == nullptr) {
-            return nullptr;
-        } else {
-            jbyteArray mResult = env->NewByteArray(responseDataSize);
-            env->SetByteArrayRegion(mResult, 0, responseDataSize, (jbyte *) (responseData));
-            return mResult;
-        }
-    } else {
+    if (drmSessionManager->drmCallback == nullptr) {
         return nullptr;
     }
+
+    GetStringUTFChars cUrl(env, url);
+    char *cData = JniUtils::jByteArrayToChars(env, data);
+    int dataLen = env->GetArrayLength(data);
+
+    DrmRequestParam drmRequestParam{};
+    drmRequestParam.mDrmType = "WideVine";
+
+    CicadaJSONItem param{};
+    param.addValue("requestType", "key");
+    param.addValue("url", std::string(cUrl.getChars()));
+    param.addValue("data", CicadaUtils::base64enc(cData, dataLen));
+    drmRequestParam.mParam = &param;
+
+    free(cData);
+
+    DrmResponseData *drmResponseData = drmSessionManager->drmCallback(drmRequestParam);
+
+    if (drmResponseData == nullptr) {
+        return nullptr;
+    }
+
+    const char *responseData = drmResponseData->mData;
+    int responseDataSize = drmResponseData->mSize;
+
+    jbyteArray mResult = nullptr;
+    if (responseData != nullptr && responseDataSize > 0) {
+        mResult = env->NewByteArray(responseDataSize);
+        env->SetByteArrayRegion(mResult, 0, responseDataSize, (jbyte *) (responseData));
+    }
+
+    delete drmResponseData;
+
+    return mResult;
 }
 
 int WideVineDrmHandler::getState() {

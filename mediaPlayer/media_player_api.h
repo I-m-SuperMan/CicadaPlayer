@@ -286,7 +286,7 @@ void CicadaSetDefaultBandWidth(playerHandle *player, int bandWidth);
 
 int CicadaInvokeComponent(playerHandle *player, const char *content);
 
-void CicadaSetDrmRequestCallback(playerHandle *player, const DrmCallback& drmCallback);
+void CicadaSetDrmRequestCallback(playerHandle *player, const std::function<Cicada::DrmResponseData*(const Cicada::DrmRequestParam& drmRequestParam)> & drmCallback);
 
 std::string CicadaGetPlayerName(playerHandle *player);
 

@@ -19,7 +19,7 @@ namespace Cicada {
 
         ~DrmManager();
 
-        void setDrmCallback(const DrmCallback &callback) {
+        void setDrmCallback(const std::function<DrmResponseData*(const DrmRequestParam& drmRequestParam)>  &callback) {
             mDrmCallback = callback;
         }
 
@@ -30,7 +30,7 @@ namespace Cicada {
     private:
         std::mutex mDrmMutex{};
         std::map<DrmInfo, std::unique_ptr<DrmHandler>  , DrmInfo::DrmInfoCompare> mDrmMap{};
-        DrmCallback mDrmCallback{nullptr};
+        std::function<DrmResponseData*(const DrmRequestParam& drmRequestParam)>  mDrmCallback{nullptr};
     };
 
 }

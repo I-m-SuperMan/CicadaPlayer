@@ -11,18 +11,42 @@
 #include <map>
 #include "DrmInfo.h"
 
-typedef std::function<std::map<std::string, std::string>(
-        const std::map<std::string, std::string>&)> DrmCallback;
-
 namespace Cicada {
+
+    class DrmRequestParam {
+    public:
+        DrmRequestParam() = default;
+
+        ~DrmRequestParam() = default;
+
+        std::string mDrmType{};
+        void *mParam{nullptr};
+    };
+
+    class DrmResponseData {
+    public:
+        DrmResponseData() = default;
+
+        ~DrmResponseData() {
+            if (mData != nullptr) {
+                free(mData);
+            }
+        };
+
+        int mSize{0};
+        char *mData{nullptr};
+    };
+
     class DrmHandler {
+
     public:
 
         DrmHandler(const DrmInfo &drmInfo);
 
         virtual ~DrmHandler() = default;
 
-        void setDrmCallback(const DrmCallback &callback) {
+        void setDrmCallback(const std::function<DrmResponseData *(
+                const DrmRequestParam &drmRequestParam)> &callback) {
             drmCallback = callback;
         }
 
@@ -33,7 +57,8 @@ namespace Cicada {
     protected:
         DrmInfo drmInfo;
 
-        DrmCallback drmCallback{nullptr};
+        std::function<DrmResponseData *(const DrmRequestParam &drmRequestParam)> drmCallback{
+                nullptr};
 
     };
 }

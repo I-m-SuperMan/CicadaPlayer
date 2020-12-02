@@ -4277,6 +4277,6 @@ int SuperMediaPlayer::invokeComponent(std::string content)
     return mDcaManager->invoke(content);
 }
 
-void SuperMediaPlayer::setDrmRequestCallback(const DrmCallback &drmCallback) {
+void SuperMediaPlayer::setDrmRequestCallback(const std::function<DrmResponseData*(const DrmRequestParam& drmRequestParam)>  &drmCallback) {
     mDrmManager->setDrmCallback(drmCallback);
 }

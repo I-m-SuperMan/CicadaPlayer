@@ -107,72 +107,35 @@ void NativeBase::java_Construct(JNIEnv *env, jobject instance , jstring name)
     listener.SubtitleExtAdd = jni_onSubTitleExtAdd;
     auto *apsaraPlayer = privateData->player;
     apsaraPlayer->SetListener(listener);
-    apsaraPlayer->setDrmRequestCallback([userData](const map<string, string> &requestParam) -> map<string, string> {
+    apsaraPlayer->setDrmRequestCallback([userData](
+                const Cicada::DrmRequestParam &drmRequestParam) -> Cicada::DrmResponseData * {
 
-        if (requestParam.count("drmType") == 0) {
-            return std::map<string, string>{};
-        }
-
-        const string &drmType = requestParam.at("drmType");
-        if (drmType == "WideVine") {
-
-            string requestType{};
-            if (requestParam.count("requestType") > 0) {
-                requestType = requestParam.at("requestType");
+            if (drmRequestParam.mDrmType != "WideVine") {
+                return nullptr;
             }
 
+            CicadaJSONItem *param = (CicadaJSONItem *) drmRequestParam.mParam;
+            assert(param != nullptr);
+
+            string requestType = param->getString("requestType");
+            string requestUrl = param->getString("url");
+            char *requestData = nullptr;
+            int requestDataSize = CicadaUtils::base64dec(param->getString("data"), &requestData);
+
+            Cicada::DrmResponseData *drmResponseData = new DrmResponseData();
             if (requestType == "key") {
-                string url{};
-                if (requestParam.count("url") > 0) {
-                    url = requestParam.at("url");
-                }
-                string data{};
-                if (requestParam.count("data") > 0) {
-                    data = requestParam.at("data");
-                }
-
-                char *requestData = nullptr;
-                int requestDataSize = CicadaUtils::base64dec(data, &requestData);
-
-                char *responseData = nullptr;
-                int responseSize = 0;
-                onRequestKeyCallback(&responseData,&responseSize ,url.c_str(), requestData,
-                                requestDataSize, userData);
-                std::map<string,string> result{};
-                if(responseData != nullptr && responseSize > 0){
-                    result["responseData"] = CicadaUtils::base64enc(responseData,responseSize);
-                }
-                return result;
-
-            } else if(requestType == "provision") {
-                string url{};
-                if (requestParam.count("url") > 0) {
-                    url = requestParam.at("url");
-                }
-                string data{};
-                if (requestParam.count("data") > 0) {
-                    data = requestParam.at("data");
-                }
-
-                char *requestData = nullptr;
-                int requestDataSize = CicadaUtils::base64dec(data, &requestData);
-
-                char *responseData = nullptr;
-                int responseSize = 0;
-                onRequestProvisionCallback(&responseData, &responseSize , url.c_str(), requestData,
-                                      requestDataSize , userData);
-
-                std::map<string,string> result{};
-                if(responseData != nullptr && responseSize > 0){
-                    result["responseData"] = CicadaUtils::base64enc(responseData,responseSize);
-                }
-                return result;
+                onRequestKeyCallback(&drmResponseData->mData, &drmResponseData->mSize,
+                                     requestUrl.c_str(), requestData,
+                                     requestDataSize, userData);
+            } else if (requestType == "provision") {
+                onRequestProvisionCallback(&drmResponseData->mData, &drmResponseData->mSize,
+                                           requestUrl.c_str(),
+                                           requestData,
+                                           requestDataSize, userData);
             }
+            return drmResponseData;
 
-        }
-
-        return std::map<string, string>{};
-    });
+        });
 }
 
 void NativeBase::java_SetConnectivityManager(JNIEnv *env, jobject instance, jobject connectManager)

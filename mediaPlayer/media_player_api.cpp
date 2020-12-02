@@ -604,7 +604,7 @@ void CicadaSetDefaultBandWidth(playerHandle *pHandle, int bandWidth)
     }
 }
 
-void CicadaSetDrmRequestCallback(playerHandle *pHandle, const DrmCallback & drmCallback) {
+void CicadaSetDrmRequestCallback(playerHandle *pHandle, const std::function<DrmResponseData*(const DrmRequestParam& drmRequestParam)>  & drmCallback) {
     GET_PLAYER;
 
     if (player) {
