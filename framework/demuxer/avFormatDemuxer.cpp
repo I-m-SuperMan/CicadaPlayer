@@ -213,6 +213,8 @@ namespace Cicada {
 
         mStreamCtxMap.clear();
         mPacketQueue.clear();
+        mLastAudioPacketPts = INT64_MIN;
+        mAudioPacketDuration = INT64_MIN;
         bOpened = false;
 
         if (mInputOpts) {
@@ -348,13 +350,23 @@ namespace Cicada {
         }
 
         if (pkt->duration > 0) {
-            pkt->duration = av_rescale_q(pkt->duration, mCtx->streams[pkt->stream_index]->time_base, av_get_time_base_q());
+            pkt->duration = av_rescale_q(pkt->duration, mCtx->streams[pkt->stream_index]->time_base,
+                                         av_get_time_base_q());
         } else if (mCtx->streams[pkt->stream_index]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
             AVCodecParameters *codecpar = mCtx->streams[pkt->stream_index]->codecpar;
-            if (codecpar->sample_rate > 0 ) {
-                //work around : WideVine frame size equals 0, assume is 1024
-                int frameSize = codecpar->frame_size > 0 ? codecpar->frame_size : 1024;
-                pkt->duration = frameSize * 1000000 / codecpar->sample_rate;
+            if (codecpar->sample_rate > 0 && codecpar->frame_size > 0) {
+                pkt->duration = codecpar->frame_size * 1000000 / codecpar->sample_rate;
+            } else {
+                if (mAudioPacketDuration == INT64_MIN && mLastAudioPacketPts != INT64_MIN) {
+                    mAudioPacketDuration = pkt->pts - mLastAudioPacketPts;
+                    mLastAudioPacketPts = INT64_MIN;
+                }
+
+                if (mAudioPacketDuration == INT64_MIN) {
+                    mLastAudioPacketPts = pkt->pts;
+                } else {
+                    pkt->duration = mAudioPacketDuration;
+                }
             }
         }
 
@@ -503,6 +515,7 @@ namespace Cicada {
         }
 
         mPacketQueue.clear();
+        mLastAudioPacketPts = INT64_MIN;
         mError = 0;
         if (mCtx->start_time == INT64_MIN) {
             mCtx->start_time = 0;
