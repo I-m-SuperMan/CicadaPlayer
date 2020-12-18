@@ -11,17 +11,16 @@
 
 extern "C" {
 #include <libavutil/base64.h>
-};
+#include <libavutil/hmac.h>
+}
 
 using namespace std;
 
-bool CicadaUtils::isEqual(double a, double b)
-{
+bool CicadaUtils::isEqual(double a, double b) {
     return (fabs(a - b) < 0.0001f);
 }
 
-bool CicadaUtils::startWith(const std::string &src, const std::initializer_list<std::string> &val)
-{
+bool CicadaUtils::startWith(const std::string &src, const std::initializer_list<std::string> &val) {
     for (const std::string &item : val) {
         if (src.substr(0, item.length()) == item) {
             return true;
@@ -31,8 +30,7 @@ bool CicadaUtils::startWith(const std::string &src, const std::initializer_list<
     return false;
 }
 
-vector<string> CicadaUtils::split(const string &str, const char delim)
-{
+vector<string> CicadaUtils::split(const string &str, const char delim) {
     vector<string> res{};
 
     if (str.empty()) {
@@ -61,8 +59,7 @@ vector<string> CicadaUtils::split(const string &str, const char delim)
     return res;
 }
 
-std::string CicadaUtils::base64enc(const char *str, int len)
-{
+std::string CicadaUtils::base64enc(const char *str, int len) {
     int out_size = AV_BASE64_SIZE(len);
     string enc;
     char *out = (char *) malloc(out_size);
@@ -77,13 +74,11 @@ std::string CicadaUtils::base64enc(const char *str, int len)
 }
 
 
-string CicadaUtils::base64enc(const string &str)
-{
+string CicadaUtils::base64enc(const string &str) {
     return base64enc(str.c_str(), str.size() + 1);
 }
 
-string CicadaUtils::base64dec(const string &str)
-{
+string CicadaUtils::base64dec(const string &str) {
     string dec;
     char *out = nullptr;
     int ret = base64dec(str, &out);
@@ -96,8 +91,7 @@ string CicadaUtils::base64dec(const string &str)
     return dec;
 }
 
-int CicadaUtils::base64dec(const string &str, char **dst)
-{
+int CicadaUtils::base64dec(const string &str, char **dst) {
     int out_size = AV_BASE64_DECODE_SIZE(str.size());
     uint8_t *out = (uint8_t *) malloc(out_size + 1);
     int ret = av_base64_decode(out, str.c_str(), out_size);
@@ -112,4 +106,20 @@ int CicadaUtils::base64dec(const string &str, char **dst)
     }
 }
 
+int
+CicadaUtils::hmac_sha1(uint8_t **dst, const uint8_t *data, unsigned int dataLen, const uint8_t *key,
+                       unsigned int keyLen) {
+    if (data == nullptr || dataLen <= 0 ||
+        key == nullptr || keyLen <= 0) {
+        return -1;
+    }
 
+    AVHMAC *shaContext = av_hmac_alloc(AV_HMAC_SHA1);
+    av_hmac_init(shaContext, key, keyLen);
+    av_hmac_update(shaContext, data, dataLen);
+
+    *dst = static_cast<uint8_t *>(malloc(20));
+    int ret = av_hmac_final(shaContext, *dst, 20);
+    av_hmac_free(shaContext);
+    return ret;
+}
